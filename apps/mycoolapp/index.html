@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+
+  <title>Mozilla In-app Payment Tester</title>
+
+      <link rel="stylesheet" media="screen,projection,tv" href="/media/css/app_payments/base.css" />
+  
+</head>
+<body>
+  <a id="fork-me" href="https://github.com/kumar303/inapp-pay-test">
+    <img src="/media/img/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" />
+  </a>
+  <div id="container">
+    <section id="generator">
+      <h2>Generate an in-app payment
+        <a href="https://developer.mozilla.org/en/Apps/In-app_payments">(docs)</a></h2>
+      <a id="start-over" href="#">Start over</a>
+      <form>
+        
+        <textarea name="pay_request" id="pay-request">{
+  &#34;iss&#34;: &#34;34XV37BDRBBF4KZCS9QU&#34;, 
+  &#34;iat&#34;: 1340726825, 
+  &#34;typ&#34;: &#34;tu.com/payments/inapp/v1&#34;, 
+  &#34;request&#34;: {
+    &#34;priceTier&#34;: &#34;1&#34;, 
+    &#34;price&#34;: &#34;10.50&#34;, 
+    &#34;description&#34;: &#34;Virtual chocolate cake to fill your virtual tummy&#34;, 
+    &#34;name&#34;: &#34;Piece of Cake&#34;, 
+    &#34;productdata&#34;: &#34;my_product_id=1234&amp;my_session_id=XYZ&#34;, 
+    &#34;currencyCode&#34;: &#34;USD&#34;,
+    &#34;postbackURL&#34;: &#34;eniac.hi.inet:8000/postback&#34;
+  }, 
+  &#34;exp&#34;: 1340730425
+}</textarea>
+        <div id="call-buy">
+          <button>call mozmarket.buy()</button>
+        </div>
+      </form>
+    </section>
+    <section id="log"><pre></pre></section>
+  </div>
+
+  <script src="/media/js/libs/jquery-1.4.4.min.js"></script>
+  <script src="/media/js/app_payments.js"></script>
+  <script src="/media/js/mozmarket.js"></script>
+
+</body>
+</html>
