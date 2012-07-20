@@ -89,7 +89,7 @@ SHELL := /bin/bash
 
 # what OS are we on?
 SYS=$(shell uname -s)
-ARCH=$(shell uname -m)
+ARCH?=$(shell uname -m)
 
 ifeq ($(SYS),Darwin)
 MD5SUM = md5 -r
@@ -193,7 +193,7 @@ webapp-zip:
 ifneq ($(DEBUG),1)
 	@echo "Packaged webapps"
 	@mkdir -p profile/webapps
-	for d in `find ${GAIA_APP_SRCDIRS} -mindepth 1 -maxdepth 1 -type d` ;\
+	@for d in `find ${GAIA_APP_SRCDIRS} -mindepth 1 -maxdepth 1 -type d` ;\
 	do \
 	  if [ -f $$d/manifest.webapp ]; \
 		then \
@@ -202,6 +202,14 @@ ifneq ($(DEBUG),1)
 			then \
 				mkdir -p profile/webapps/$$n.$(GAIA_DOMAIN)$(GAIA_PORT); \
 				cdir=`pwd`; \
+				for f in `grep -r shared/js $$d` ;\
+				do \
+					if [[ "$$f" == *shared/js* ]] ;\
+					then \
+						file_to_copy=`echo "$$f" | cut -d'/' -f 3 | cut -d'"' -f1;`; \
+						cp --parents shared/js/$$file_to_copy $$d ;\
+					fi \
+				done; \
 				cd $$d; \
 				zip -r application.zip *; \
 				cd $$cdir; \
@@ -423,7 +431,7 @@ lint:
 	@# cubevid
 	@# crystalskull
 	@# towerjelly
-	@gjslint --nojsdoc -r apps -e 'cubevid,crystalskull,towerjelly,email/js/ext,music/js/ext,calendar/js/ext'
+	@gjslint --nojsdoc -r apps -e 'cubevid,crystalskull,towerjelly,email/js/ext,music/js/ext,calendar/js/ext,keyboard/js/predictive_text'
 
 # Generate a text file containing the current changeset of Gaia
 # XXX I wonder if this should be a replace-in-file hack. This would let us
