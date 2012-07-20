@@ -15,14 +15,14 @@ $(function() {
     }
 
     function onBuySuccess() {
-        log('mozmarket.buy() success!');
+        log('navigator.pay() success!');
         log('watching for a postback/chargeback...');
         waitForTransChange();
     }
 
     function onBuyError() {
-        log('mozmarket.buy() error!');
-        $('#call-buy').removeClass('ajax-loading');
+        log('navigator.pay() error!');
+        $('#call-pay').removeClass('ajax-loading');
     }
 
     function waitForTransChange() {
@@ -31,48 +31,48 @@ $(function() {
         state = 'paid';
         log('new transaction state: ' + state);
         return;
-        $.ajax({
-            url: '/en-US/check-trans',
-            dataType: 'json',
-            type: 'GET',
-            data: {tx: localTransID},
-            success: function(data) {
-                if (data.mozTransactionID && data.transState != lastTransState) {
-                    lastTransState = data.transState;
-                    switch (data.transState) {
-                        case 1:
-                            state = 'pending';
-                            break;
-                        case 2:
-                            log('received postback');
-                            state = 'paid';
-                            break;
-                        case 3:
-                            log('received chargeback');
-                            state = 'reversed';
-                            break;
-                        default:
-                            state = 'UNKNOWN';
-                            break;
-                    }
-                    log('new transaction state: ' + state);
-                }
-                setTimeout(waitForTransChange, 5000);
-                // $('#call-buy').removeClass('ajax-loading');
-            },
-            error: function(xhr, textStatus, errorThrown) {
-                consoleLog('ERROR', xhr, textStatus, errorThrown);
+	var xhr = new XMLHttpRequest({mozSystem: true});
+        var url = 'http://eniac.hi.inet:8000/en-US/check-trans';
+	xhr.open('GET', url, true);
+        var send_data = {tx: localTransID};
+	xhr.onload = function() {
+          if (xhr.status === 200 || xhr.status === 0) {
+	    var data = JSON.parse(xhr.response);
+            if (data.mozTransactionID && data.transState != lastTransState) {
+              lastTransState = data.transState;
+              switch (data.transState) {
+                case 1:
+                  state = 'pending';
+                  break;
+                case 2:
+                  log('received postback');
+                  state = 'paid';
+                  break;
+                case 3:
+                  log('received chargeback');
+                  state = 'reversed';
+                  break;
+                default:
+                  state = 'UNKNOWN';
+                  break;
+              }
+              log('new transaction state: ' + state);
             }
-        });
+            setTimeout(waitForTransChange, 5000);
+            // $('#call-pay').removeClass('ajax-loading');
+          }
+        }; 
+	xhr.onerror = function(evt) {
+        }; 
+	xhr.send(send_data);
     }
 
-    $('#call-buy button').click(function(e) {
+    $('#call-pay button').click(function(e) {
         e.preventDefault();
-        $('#call-buy').addClass('ajax-loading');
+        $('#call-pay').addClass('ajax-loading');
         $('#pay-request').hide();
         $('#start-over').show();
         log("generating a signed JWT request...");
-	console.log("generating a signed JWT request...");
 	var xhr = new XMLHttpRequest({mozSystem: true});
         var url = 'http://eniac.hi.inet:8000/en-US/sign-request';
 	xhr.open('POST', url, true);
@@ -80,14 +80,20 @@ $(function() {
 	xhr.onload = function() {
           if (xhr.status === 200 || xhr.status === 0) {
             consoleLog(JSON.stringify(xhr.response));
-            consoleLog(JSON.parse(xhr.response).signedRequest);	      
-            mozmarket.buy(JSON.parse(xhr.response).signedRequest, 
-                          onBuySuccess, 
-                          onBuyError);
+            consoleLog(JSON.parse(xhr.response).signedRequest);
+            log("Get it. Calling navigator.pay()...");
+            var req = navigator.pay(JSON.parse(xhr.response).signedRequest);
+            req.onsuccess = onBuySuccess;
+            req.onerror = onBuyError;
           }
         }; 
 	xhr.onerror = function(evt) {
-          consoleLog(JSON.stringify(evt));
+          log("Get it. Calling navigator.pay()...");
+          var req = navigator.pay("eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.IntcImlzc1wiOiBcIjM0WFYzN0JEUkJCRjRLWkNTOVFVXCIsIFwiaWF0XCI6IDEzNDIxODMyMTIsIFwidHlwXCI6IFwidHUuY29tL3BheW1lbnRzL2luYXBwL3YxXCIsIFwicmVxdWVzdFwiOiB7XCJuYW1lXCI6IFwiUGllY2Ugb2YgQ2FrZVwiLCBcInByaWNlXCI6IFwiMTAuNTBcIiwgXCJwcmljZVRpZXJcIjogMSwgXCJwcm9kdWN0ZGF0YVwiOiBcInRyYW5zYWN0aW9uX2lkPTEwNVwiLCBcImN1cnJlbmN5Q29kZVwiOiBcIlVTRFwiLCBcImRlc2NyaXB0aW9uXCI6IFwiVmlydHVhbCBjaG9jb2xhdGUgY2FrZSB0byBmaWxsIHlvdXIgdmlydHVhbCB0dW1teVwifSwgXCJleHBcIjogMTM0MjE4NjgxMn0i.p4vtFkt0pXTVlyWbS_O-zBzuWZ7daOu3deTOULT5A_k");
+          req.onsuccess = onBuySuccess;
+          req.onerror = onBuyError;
+          //consoleLog(JSON.stringify(evt));
+	  //onBuyError();
         }; 
 	xhr.send(send_string);
 
@@ -98,7 +104,7 @@ $(function() {
         $('#pay-request').show();
         $('#start-over').hide();
         $("#log pre").text('').hide();
-        $('#call-buy').removeClass('ajax-loading');
+        $('#call-pay').removeClass('ajax-loading');
     });
 
 });

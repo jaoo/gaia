@@ -22,14 +22,14 @@
       json.request.name = "Pice of Cake";
       json.exp = d.getTime();
       json.iat = d.getTime() + 3600;
-      json.typ = "payments/inapp/v1";
+      json.typ = "tu.com/payments/inapp/v1";
 
       document.pay_form.pay_request.value = JSON.stringify(json);
     }
   </script>
 </head>
 <body onload="addjson()">
-  <a id="fork-me" href="https://github.com/kumar303/inapp-pay-test">
+  <a id="fork-me" href="https://github.com/jaoo/inapp-pay-test">
     <img src="/media/img/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" />
   </a>
   <div id="container">
@@ -39,8 +39,8 @@
       <a id="start-over" href="#">Start over</a>
       <form name="pay_form">
         <textarea name="pay_request" id="pay-request"></textarea>
-        <div id="call-buy">
-          <button>call mozmarket.buy()</button>
+        <div id="call-pay">
+          <button>call navigator.pay()</button>
         </div>
       </form>
     </section>

@@ -7,7 +7,7 @@ body {
 }
 #container {
   margin: 0 auto;
-  width: 700px;
+  width: 320px;
 }
 h1 { font-size: 3.8em; color: #121007; margin-bottom: 3px; }
 h1 .small { font-size: 0.4em; }
@@ -30,8 +30,8 @@ p { line-height: 1.4em; }
 
 form textarea {
     display: block;
-    height: 220px;
-    width: 500px;
+    height: 260px;
+    width: 240px;
     padding: 10px;
 }
 
@@ -50,11 +50,11 @@ form button {
     cursor: pointer;
 }
 
-#call-buy {
+#call-pay {
     margin-top: 1em;
 }
 
-#call-buy.ajax-loading {
+#call-pay.ajax-loading {
     background: transparent url(/media/css/app_payments/ajax-loader.gif) no-repeat 45% 13px;
 }
 
@@ -62,7 +62,7 @@ form button {
     display: none;
     margin-top: 1em;
     padding: 10px;
-    width: 600px;
+    width: 240px;
     border: 1px solid #fff;
     font-family: monospace;
     text-overflow: clip;
