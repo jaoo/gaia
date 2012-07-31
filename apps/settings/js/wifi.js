@@ -151,57 +151,56 @@ var gWifiManager = (function(window) {
 
 // handle Wi-Fi settings
 window.addEventListener('localized', function wifiSettings(evt) {
+  var settings = window.navigator.mozSettings;
   var _ = navigator.mozL10n.get;
 
-  // main wifi button
-  var gStatus = (function wifiStatus(checkbox, infoBlock) {
-    var switching = false;
+  var gWifiCheckBox =
+    document.querySelector('#wifi-enabled input[type=checkbox]');
+  var gWifiInfoBlock = document.querySelector('#wifi-desc');
 
-    // current state
-    function updateState() {
-      switching = false;
-      var currentNetwork = gWifiManager.connection.network;
-      if (currentNetwork) {
-        infoBlock.textContent = _('fullStatus-connected', currentNetwork);
-        checkbox.checked = true;
-      } else if (gWifiManager.enabled) {
-        infoBlock.textContent = _('fullStatus-disconnected');
-        checkbox.checked = true;
-      } else {
-        infoBlock.textContent = _('disabled');
-        checkbox.checked = false;
-      }
+  if (!settings)
+    return;
+
+  // toggle wifi on/off
+  gWifiCheckBox.onchange = function toggleWifi() {
+    settings.getLock().set({'wifi.enabled': this.checked});
+  };
+
+  /** mozWifiManager status
+    * see dom/wifi/nsIWifi.idl -- the 4 possible statuses are:
+    *  - connecting:
+    *        fires when we start the process of connecting to a network.
+    *  - associated:
+    *        fires when we have connected to an access point but do not yet
+    *        have an IP address.
+    *  - connected:
+    *        fires once we are fully connected to an access point and can
+    *        access the internet.
+    *  - disconnected:
+    *        fires when we either fail to connect to an access point
+    *          (transition: associated -> disconnected)
+    *        or when we were connected to a network but have disconnected
+    *          (transition: connected -> disconnected).
+    */
+  gWifiManager.onstatuschange = function(event) {
+    updateNetworkState();
+
+    // refresh the network list when network is connected.
+    if (event.status === 'connected') {
+      gNetworkList.scan();
     }
+  };
 
-    // toggle wifi on/off
-    checkbox.onchange = function toggleWifi() {
-      if (switching)
-        return;
-      switching = true;
-      var req;
-      if (gWifiManager.enabled) {
-        // stop wifi
-        gNetworkList.clear();
-        infoBlock.textContent = '';
-        req = gWifiManager.setEnabled(false);
-      } else {
-        // start wifi
-        req = gWifiManager.setEnabled(true);
-        req.onerror = function() {
-          gNetworkList.autoscan = false;
-        };
-      }
-    };
+  gWifiManager.onenabled = function onWifiEnabled() {
+    updateNetworkState();
+    gNetworkList.scan();
+  };
 
-    // API
-    return {
-      get textContent() { return infoBlock.textContent; },
-      set textContent(value) { infoBlock.textContent = value; },
-      get switching() { return switching; },
-      update: updateState
-    };
-  }) (document.querySelector('#wifi-enabled input[type=checkbox]'),
-      document.querySelector('#wifi-desc'));
+  gWifiManager.ondisabled = function onWifiDisabled() {
+    gWifiInfoBlock.textContent = _('disabled');
+    gNetworkList.clear(false);
+    gNetworkList.autoscan = false;
+  };
 
   // network list
   var gNetworkList = (function networkList(list) {
@@ -274,7 +273,7 @@ window.addEventListener('localized', function wifiSettings(evt) {
       if (addScanningItem)
         list.appendChild(newScanItem());
       index = [];
-    };
+    }
 
     // scan wifi networks and display them in the list
     function scan() {
@@ -287,14 +286,12 @@ window.addEventListener('localized', function wifiSettings(evt) {
         return;
       }
 
-      var req = gWifiManager.getNetworks();
       scanning = true;
+      var req = gWifiManager.getNetworks();
 
       req.onsuccess = function onScanSuccess() {
-        scanning = false;
-
-        // create a list with a 'scan again' button
-        clear();
+        // clear list again for showing scaning result.
+        clear(false);
         var button = document.createElement('button');
         button.textContent = _('scanNetworks');
         button.onclick = function() {
@@ -331,20 +328,18 @@ window.addEventListener('localized', function wifiSettings(evt) {
         // auto-rescan if requested
         if (autoscan)
           window.setTimeout(scan, scanRate);
+
+        scanning = false;
       };
 
       req.onerror = function onScanError(error) {
-        scanning = false;
-        console.warn('wifi error: ' + req.error.name);
-        gStatus.textContent = req.error.name;
-
         // auto-rescan if requested
         if (autoscan)
           window.setTimeout(scan, scanRate);
+        scanning = false;
       };
 
-      gStatus.update();
-    };
+    }
 
     function display(ssid, message) {
       var listItem = index[ssid];
@@ -370,56 +365,6 @@ window.addEventListener('localized', function wifiSettings(evt) {
       get scanning() { return scanning; }
     };
   }) (document.getElementById('wifi-networks'));
-
-  // auto-scan networks if the wifi panel is active
-  window.addEventListener('hashchange', function autoscan() {
-    if (document.location.hash == '#wifi') {
-      gNetworkList.autoscan = false; // disabled, as requested by UX
-      gNetworkList.scan();
-    } else {
-      gNetworkList.autoscan = false;
-    }
-  });
-
-  /** mozWifiManager status
-    * see dom/wifi/nsIWifi.idl -- the 4 possible statuses are:
-    *  - connecting:
-    *        fires when we start the process of connecting to a network.
-    *  - associated:
-    *        fires when we have connected to an access point but do not yet
-    *        have an IP address.
-    *  - connected:
-    *        fires once we are fully connected to an access point and can
-    *        access the internet.
-    *  - disconnected:
-    *        fires when we either fail to connect to an access point
-    *          (transition: associated -> disconnected)
-    *        or when we were connected to a network but have disconnected
-    *          (transition: connected -> disconnected).
-    */
-  gWifiManager.onstatuschange = function(event) {
-    if (!gWifiManager.connection || !gWifiManager.connection.network)
-      return;
-    var ssid = gWifiManager.connection.network.ssid;
-    var status = gWifiManager.connection.status;
-    if (status == 'connected')
-      gNetworkList.scan(); // refresh the network list
-    // 'fullStatus' can use 'ssid' as an argument, 'shortStatus' cannot
-    gStatus.textContent = _('fullStatus-' + status, event.network);
-    gNetworkList.display(ssid, _('shortStatus-' + status));
-  };
-
-  /** mozWifiManager events / callbacks
-    * requires bug 766497
-    */
-  gWifiManager.onenabled = function onWifiEnabled() {
-    gStatus.update();
-    gNetworkList.clear(true);
-    gNetworkList.scan();
-  }
-  gWifiManager.ondisabled = function onWifiDisabled() {
-    gStatus.update();
-  }
 
   function isConnected(network) {
     // XXX the API should expose a 'connected' property on 'network',
@@ -456,13 +401,14 @@ window.addEventListener('localized', function wifiSettings(evt) {
 
     function wifiConnect() {
       gWifiManager.associate(network);
-      gStatus.textContent = '';
       gNetworkList.display(network.ssid, _('shortStatus-connecting'));
     }
 
     function wifiDisconnect() {
       gWifiManager.forget(network);
-      gStatus.textContent = '';
+      gNetworkList.display(network.ssid, _('shortStatus-disconnected'));
+      // get available network list
+      gNetworkList.scan();
     }
 
     function getKeyManagement() {
@@ -568,11 +514,56 @@ window.addEventListener('localized', function wifiSettings(evt) {
     }
   }
 
-  // startup
-  gStatus.update();
-  if (gWifiManager.enabled) {
-    gNetworkList.clear(true);
-    gNetworkList.scan();
+  // update network state, called only when wifi enabled.
+  function updateNetworkState() {
+    var currentNetwork = gWifiManager.connection.network;
+    var networkStatus = gWifiManager.connection.status;
+    if (networkStatus === 'disconnected') {
+      gWifiInfoBlock.textContent = _('fullStatus-disconnected');
+    } else {
+      gWifiInfoBlock.textContent =
+          _('fullStatus-' + networkStatus, currentNetwork);
+    }
   }
+
+  function setMozSettingsEnabled(value) {
+    gWifiCheckBox.checked = value;
+    if (value) {
+      // gWifiManager may not be ready (enabled) at this moment.
+      // to be responsive, show 'initializing' status and 'search...' first.
+      // a 'scan' would be called when gWifiManager is enabled.
+      gWifiInfoBlock.textContent = _('fullStatus-initializing');
+      gNetworkList.clear(true);
+    } else {
+      gWifiInfoBlock.textContent = _('disabled');
+      gNetworkList.clear(false);
+      gNetworkList.autoscan = false;
+    }
+  }
+
+  var lastMozSettingValue = true;
+
+  // register an observer to monitor wifi.enabled changes
+  settings.addObserver('wifi.enabled', function(event) {
+    if (lastMozSettingValue == event.settingValue)
+      return;
+
+    lastMozSettingValue = event.settingValue;
+    setMozSettingsEnabled(event.settingValue);
+  });
+
+  // startup, update status
+  var req = settings.getLock().get('wifi.enabled');
+  req.onsuccess = function wf_getStatusSuccess() {
+    lastMozSettingValue = req.result['wifi.enabled'];
+    setMozSettingsEnabled(lastMozSettingValue);
+    if (lastMozSettingValue) {
+      // at this moment, gWifiManager probably have been enabled.
+      // so there won't invoke any status changed callback function
+      // therefore, we need to get network list here
+      updateNetworkState();
+      gNetworkList.scan();
+    }
+  };
 });
 

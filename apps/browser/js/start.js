@@ -1,13 +1,14 @@
 'use strict';
 
 var Start = {
-  MAX_TOP_SITES: 6, // max number of top sites to display
+  MAX_TOP_SITES: 4, // max number of top sites to display
 
   init: function start_init() {
     this.thumbnails = document.getElementById('thumbnails');
     this.noTopSites = document.getElementById('no-top-sites');
     Places.init((function() {
-      Places.getTopSites(this.MAX_TOP_SITES, this.showThumbnails.bind(this));
+      Places.getTopSites(this.MAX_TOP_SITES, null,
+        this.showThumbnails.bind(this));
     }).bind(this));
 
   },

@@ -8,6 +8,8 @@ const GridManager = (function() {
   var thresholdForPanning = window.innerWidth / 4;
   var thresholdForTapping = 10;
 
+  var dragging = false;
+
   var pages = [];
   pages.current = 0;
 
@@ -140,19 +142,29 @@ const GridManager = (function() {
   }
 
   function goToPage(index, callback) {
+    var previousIndex = pages.current;
     var isSamePage = pages.current === index;
     pages.current = index;
     callback = callback || function() {};
 
     if (isSamePage) {
-      delete document.body.dataset.transitioning;
       callback();
-    } else {
-      var container = pageHelper.getCurrent().container;
-      container.addEventListener('transitionend', function tr_end(e) {
-        container.removeEventListener('transitionend', tr_end);
+      if (!dragging) {
         delete document.body.dataset.transitioning;
+      }
+    } else {
+      var currentPageContainer = pageHelper.getCurrent().container;
+
+      currentPageContainer.addEventListener('transitionend', function end(e) {
+        currentPageContainer.removeEventListener('transitionend', end);
         callback();
+        Search.resetIcon();
+        pageHelper.getCurrent().bounce(previousIndex - index,
+        function bounceEnd() {
+          if (!dragging) {
+            delete document.body.dataset.transitioning;
+          }
+        });
       });
     }
 
@@ -456,11 +468,12 @@ const GridManager = (function() {
 
     onDragStart: function gm_onDragSart() {
       releaseEvents();
-      document.body.dataset.dragging = true;
+      dragging = document.body.dataset.dragging = true;
     },
 
     onDragStop: function gm_onDragStop() {
       delete document.body.dataset.dragging;
+      dragging = false;
       delete document.body.dataset.transitioning;
       ensurePagesOverflow();
       removeEmptyPages();

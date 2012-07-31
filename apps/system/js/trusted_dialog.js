@@ -10,7 +10,7 @@ var TrustedDialog = (function() {
 
   function open(url, callback) {
     if (!url)
-      return;
+      return null;
 
     // If the trusted dialog is being shown we swap frames.
     if (trustedDialogIsShown()) {
@@ -67,6 +67,10 @@ var TrustedDialog = (function() {
     return trustedDialogElement.classList.contains('active');
   };
 
+  function getFrame() {
+    return currentFrame;
+  };
+
   window.addEventListener('mozChromeEvent', function(e) {
     switch (e.detail.type) {
       // Chrome asks Gaia to create a trusted iframe. Once it is created,
@@ -95,8 +99,18 @@ var TrustedDialog = (function() {
     }
   });
 
+  window.addEventListener('home', function(e) {
+    if (!trustedDialogIsShown())
+      return;
+
+    close();
+    e.stopImmediatePropagation();
+  });
+
   return {
     open: open,
-    close: close
+    close: close,
+    trustedDialogIsShown: trustedDialogIsShown,
+    getFrame: getFrame
   };
 })();

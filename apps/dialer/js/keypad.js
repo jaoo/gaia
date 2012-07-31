@@ -48,6 +48,7 @@ var TonePlayer = {
 
 var KeypadManager = {
   _phoneNumber: '',
+  _onCall: false,
 
   get phoneNumberView() {
     delete this.phoneNumberView;
@@ -111,12 +112,6 @@ var KeypadManager = {
       document.getElementById('keypad-hidebar-hide-keypad-action');
   },
 
-  get contactPrimaryInfo() {
-    delete this.contactPrimaryInfo;
-    return this.contactPrimaryInfo =
-      document.getElementById('contact-primary-info');
-  },
-
   init: function kh_init() {
     // Update the minimum phone number phone size.
     // The UX team states that the minimum font size should be
@@ -137,8 +132,10 @@ var KeypadManager = {
     this.deleteButton.addEventListener('mouseup', keyHandler);
 
     if (this.callBarAddContact) {
-      this.callBarAddContact.addEventListener('mouseup', this.addContact);
-      this.callBarCallAction.addEventListener('mouseup', this.makeCall);
+      this.callBarAddContact.addEventListener('mouseup',
+                                              this.addContact.bind(this));
+      this.callBarCallAction.addEventListener('mouseup',
+                                              this.makeCall.bind(this));
     }
 
     // The keypad hide bar is only included in the on call version of the
@@ -171,6 +168,9 @@ var KeypadManager = {
 
   render: function hk_render(layoutType) {
     if (layoutType == 'oncall') {
+      this._onCall = true;
+      var numberNode = CallScreen.activeCall.querySelector('.number');
+      this._phoneNumber = numberNode.textContent;
       this.phoneNumberViewContainer.classList.add('keypad-visible');
       if (this.callBar) {
         this.callBar.classList.add('hide');
@@ -198,17 +198,33 @@ var KeypadManager = {
   makeCall: function hk_makeCall(event) {
     event.stopPropagation();
 
-    if (KeypadManager._phoneNumber != '') {
+    if (this._phoneNumber != '') {
       CallHandler.call(KeypadManager._phoneNumber);
     }
   },
 
   addContact: function hk_addContact(event) {
-    //TODO Create the request to the contacts app
+    var number = this._phoneNumber;
+    if (!number)
+      return;
+
+    try {
+      var activity = new MozActivity({
+        name: 'new',
+        data: {
+          type: 'webcontacts/contact',
+          params: {
+            'tel': number
+          }
+        }
+      });
+    } catch (e) {
+      console.log('WebActivities unavailable? : ' + e);
+    }
   },
 
   callbarBackAction: function hk_callbarBackAction(event) {
-    CallScreen.toggleKeypad();
+    CallScreen.hideKeypad();
   },
 
   hangUpCallFromKeypad: function hk_hangUpCallFromKeypad(event) {
@@ -231,8 +247,8 @@ var KeypadManager = {
       break;
 
       case 'on-call':
-        var fakeView = CallScreen.fakeContactPrimaryInfo;
-        var view = CallScreen.contactPrimaryInfo;
+        var fakeView = CallScreen.activeCall.querySelector('.fake-number');
+        var view = CallScreen.activeCall.querySelector('.number');
       break;
     }
 
@@ -293,62 +309,71 @@ var KeypadManager = {
   },
 
   keyHandler: function kh_keyHandler(event) {
-    if (event.target.dataset.value != null) {
-      var key = event.target.dataset.value;
-    } else if (event.target.parentNode.dataset.value != null) {
-      var key = event.target.parentNode.dataset.value;
-    }
+    var key = event.target.dataset.value;
 
-    if (key != undefined) {
-      event.stopPropagation();
+    if (!key)
+      return;
 
-      if (event.type == 'mousedown') {
-        if (key != 'delete') {
-          if (keypadSoundIsEnabled) {
-            TonePlayer.play(gTonesFrequencies[key]);
-          }
+    event.stopPropagation();
+    if (event.type == 'mousedown') {
+      this._longPress = false;
 
-          // Sending the DTMF tone
-          var telephony = navigator.mozTelephony;
-          if (telephony) {
-            telephony.startTone(key);
-            window.setTimeout(function ch_stopTone() {
-              telephony.stopTone();
-            }, 100);
-          }
+      if (key != 'delete') {
+        if (keypadSoundIsEnabled) {
+          TonePlayer.play(gTonesFrequencies[key]);
         }
 
-        // Manage long press
-        if (key == '0' || key == 'delete') {
-          this._holdTimer = setTimeout(function(self) {
-            if (key == 'delete') {
-              self._phoneNumber = '';
-            } else {
-              self._phoneNumber += '+';
-            }
+        // Sending the DTMF tone if on a call
+        var telephony = navigator.mozTelephony;
+        if (telephony && telephony.active &&
+            telephony.active.state == 'connected') {
 
-            self._longPress = true;
-            self._updatePhoneNumberView();
-          }, 400, this);
-        }
-      } else if (event.type == 'mouseup') {
-        // If it was a long press our work is already done
-        if (this._longPress) {
-          this._longPress = false;
-          this._holdTimer = null;
-          return;
-        }
-        if (key == 'delete') {
-          this._phoneNumber = this._phoneNumber.slice(0, -1);
-        } else {
-          this._phoneNumber += key;
-        }
+          telephony.startTone(key);
+          window.setTimeout(function ch_stopTone() {
+            telephony.stopTone();
+          }, 100);
 
-        if (this._holdTimer)
-          clearTimeout(this._holdTimer);
-
-        this._updatePhoneNumberView();
+        }
       }
+
+      // Manage long press
+      if (key == '0' || key == 'delete') {
+        this._holdTimer = setTimeout(function(self) {
+          if (key == 'delete') {
+            self._phoneNumber = '';
+          } else {
+            self._phoneNumber += '+';
+          }
+
+          self._longPress = true;
+          self._updatePhoneNumberView();
+        }, 400, this);
+      }
+
+      // Voicemail long press (needs to be longer since it actually dials)
+      if (key == '1') {
+        this._holdTimer = setTimeout(function vm_call(self) {
+          self._longPress = true;
+          self._callVoicemail();
+        }, 3000, this);
+      }
+    } else if (event.type == 'mouseup') {
+      // If it was a long press our work is already done
+      if (this._longPress) {
+        this._longPress = false;
+        this._holdTimer = null;
+        return;
+      }
+      if (key == 'delete') {
+        this._phoneNumber = this._phoneNumber.slice(0, -1);
+      } else {
+        this._phoneNumber += key;
+      }
+
+      if (this._holdTimer)
+        clearTimeout(this._holdTimer);
+
+      this._updatePhoneNumberView();
     }
   },
 
@@ -366,16 +391,21 @@ var KeypadManager = {
       this.deleteButton.style.visibility = visibility;
     }
 
-    if (this.contactPrimaryInfo) {
-      this.contactPrimaryInfo.value = phoneNumber;
-      this.moveCaretToEnd(this.contactPrimaryInfo);
+    if (this._onCall) {
+      var view = CallScreen.activeCall.querySelector('.number');
+      view.textContent = phoneNumber;
       this.formatPhoneNumber('on-call');
     } else {
       this.phoneNumberView.value = phoneNumber;
       this.moveCaretToEnd(this.phoneNumberView);
       this.formatPhoneNumber('dialpad');
     }
+  },
 
-    this._holdTimer = null;
+  _callVoicemail: function kh_callVoicemail() {
+     var voicemail = navigator.mozVoicemail;
+     if (voicemail && voicemail.number) {
+       CallHandler.call(voicemail.number);
+     }
   }
 };

@@ -16,6 +16,32 @@ var Settings = {
     if (!settings) // e.g. when debugging on a browser...
       return;
 
+    settings.onsettingchange = function settingChanged(event) {
+      var key = event.settingName;
+      var value = event.settingValue;
+
+      var checkbox =
+          document.querySelector('input[name="' + key + '"]');
+      if (checkbox) {
+        if (checkbox.checked == value)
+          return;
+        checkbox.checked = value;
+        return;
+      }
+
+      var progressBar =
+          document.querySelector('[data-name="' + key + '"]');
+      if (progressBar) {
+        var intValue = Math.ceil(value * 10);
+        if (progressBar.value == intValue)
+          return;
+        progressBar.value = intValue;
+        return;
+      }
+
+      // XXX: if there are more values needs to be synced.
+    };
+
     // preset all inputs that have a `name' attribute
     var transaction = settings.getLock();
 
@@ -206,12 +232,12 @@ var Settings = {
     // validate all settings in the dialog box
     function submit() {
       if (settings) {
-        var cset = {};
         for (var i = 0; i < fields.length; i++) {
           var input = fields[i];
+          var cset = {};
           cset[input.dataset.setting] = input.value;
+          settings.getLock().set(cset);
         }
-        settings.getLock().set(cset);
       }
       return close();
     }
