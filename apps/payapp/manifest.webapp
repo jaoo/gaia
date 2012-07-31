@@ -1,0 +1,27 @@
+{
+  "name": "payapp",
+  "description": "This is my supercool app",
+  "launch_path": "/index.html",
+  "developer": {
+    "name": "Just another develper",
+    "url": "https://github.com"
+  },
+  "permissions": [
+    "systemXHR"
+  ],
+  "locales": {
+    "en-US": {
+      "name": "payapp",
+      "description": "In-app payment test application"
+    },
+    "es": {
+      "name": "payapp",
+      "description": "Aplicacion de pruebas para pagos"
+    }
+  },
+  "default_locale": "en-US",
+  "icons": {
+    "60": "/media/img/coin.png"
+  },
+  "orientation": "portrait-primary"
+}

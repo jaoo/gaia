@@ -88,12 +88,8 @@ $(function() {
           }
         }; 
 	xhr.onerror = function(evt) {
-          log("Get it. Calling navigator.pay()...");
-          var req = navigator.pay("eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.IntcImlzc1wiOiBcIjM0WFYzN0JEUkJCRjRLWkNTOVFVXCIsIFwiaWF0XCI6IDEzNDIxODMyMTIsIFwidHlwXCI6IFwidHUuY29tL3BheW1lbnRzL2luYXBwL3YxXCIsIFwicmVxdWVzdFwiOiB7XCJuYW1lXCI6IFwiUGllY2Ugb2YgQ2FrZVwiLCBcInByaWNlXCI6IFwiMTAuNTBcIiwgXCJwcmljZVRpZXJcIjogMSwgXCJwcm9kdWN0ZGF0YVwiOiBcInRyYW5zYWN0aW9uX2lkPTEwNVwiLCBcImN1cnJlbmN5Q29kZVwiOiBcIlVTRFwiLCBcImRlc2NyaXB0aW9uXCI6IFwiVmlydHVhbCBjaG9jb2xhdGUgY2FrZSB0byBmaWxsIHlvdXIgdmlydHVhbCB0dW1teVwifSwgXCJleHBcIjogMTM0MjE4NjgxMn0i.p4vtFkt0pXTVlyWbS_O-zBzuWZ7daOu3deTOULT5A_k");
-          req.onsuccess = onBuySuccess;
-          req.onerror = onBuyError;
-          //consoleLog(JSON.stringify(evt));
-	  //onBuyError();
+          consoleLog(JSON.stringify(evt));
+	  onBuyError();
         }; 
 	xhr.send(send_string);
 
