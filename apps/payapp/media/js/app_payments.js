@@ -32,7 +32,7 @@ $(function() {
         log('new transaction state: ' + state);
         return;
 	var xhr = new XMLHttpRequest({mozSystem: true});
-        var url = 'http://eniac.hi.inet:8000/en-US/check-trans';
+        var url = 'http://payapp.owd.tid.es/en-US/check-trans';
 	xhr.open('GET', url, true);
         var send_data = {tx: localTransID};
 	xhr.onload = function() {
@@ -74,9 +74,10 @@ $(function() {
         $('#start-over').show();
         log("generating a signed JWT request...");
 	var xhr = new XMLHttpRequest({mozSystem: true});
-        var url = 'http://eniac.hi.inet:8000/en-US/sign-request';
+        var url = 'http://payapp.owd.tid.es/en-US/sign-request';
 	xhr.open('POST', url, true);
         var send_string = $('#generator form').serialize();
+        consoleLog("send_string: " + send_string);
 	xhr.onload = function() {
           if (xhr.status === 200 || xhr.status === 0) {
             consoleLog(JSON.stringify(xhr.response));
@@ -88,7 +89,6 @@ $(function() {
           }
         }; 
 	xhr.onerror = function(evt) {
-          consoleLog(JSON.stringify(evt));
 	  onBuyError();
         }; 
 	xhr.send(send_string);

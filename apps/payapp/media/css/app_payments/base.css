@@ -35,6 +35,12 @@ form textarea {
     padding: 10px;
 }
 
+form input {
+    display: block;
+    width: 240px;
+    padding: 10px;
+}
+
 form button {
     font-size: 20px;
     padding: 14px 24px;
