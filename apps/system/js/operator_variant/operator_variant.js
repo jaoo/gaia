@@ -33,58 +33,76 @@
   };
 
   function applyOperatorVariantSettings() {
-    if (!cset['operatorvariant.mcc'] ||
-        !cset['operatorvariant.mnc']) {
+    if (!cset['ro.moz.iccInfo.mcc'] ||
+        !cset['ro.moz.iccInfo.mnc']) {
       return;
     }
     if (gNetwork.mcc == 0 && gNetwork.mnc == 0) {
       return;
     }
-    if ((gNetwork.mcc == cset['operatorvariant.mcc']) &&
-        (gNetwork.mnc == cset['operatorvariant.mnc'])) {
+    if ((gNetwork.mcc == cset['ro.moz.iccInfo.mcc']) &&
+        (gNetwork.mnc == cset['ro.moz.iccInfo.mnc'])) {
       return;
     }
 
-    cset['operatorvariant.mnc'] = gNetwork.mnc;
-    cset['operatorvariant.mcc'] = gNetwork.mcc;
-    retrieveOperatorVariantSettings();
-    storeSettings();
+    cset['ro.moz.iccInfo.mcc'] = gNetwork.mcc;
+    cset['ro.moz.iccInfo.mnc'] = gNetwork.mnc;
+    loadOperatorVariantSettings();
   };
 
-  function retrieveOperatorVariantSettings() {
-    var OPERATOR_VARIANT_FILE = 'serviceproviders.xml';
+  function loadOperatorVariantSettings() {
+    var OPERATOR_VARIANT_FILE = 'operator-variant.xml';
 
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', OPERATOR_VARIANT_FILE, false);
-    xhr.send();
+    xhr.open('GET', OPERATOR_VARIANT_FILE, true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status === 0)) {
+        // Load specific operator settings. Add them here.
 
-    // Set specific operator settings. Add them here.
+        var result = querySettings(xhr.responseXML,
+                                   cset['ro.moz.iccInfo.mcc'],
+                                   cset['ro.moz.iccInfo.mnc']);
+        if (!result.length) {
+          return;
+        }
 
-    // At the moment we set voicemail number to be used for the dialer app
-    // if it's not in the ICC card.
-    var voicemailResult = querySettings(xhr.responseXML,
-                                        cset['operatorvariant.mcc'],
-                                        cset['operatorvariant.mnc'],
-                                        'voicemail');
-    var voicemailNode = voicemailResult.iterateNext();
-    if (!voicemailNode) {
-      return;
-    }
-    cset['ro.moz.ril.iccmbdn'] = voicemailNode.textContent;
+        // Load voicemail number to be used for the dialer app
+        // if it's not in the ICC card.
+        var voicemail = result[0].getAttribute('voicemail');
+        cset['ro.moz.iccInfo.mbdn'] = "";
+        if (voicemail) {
+          cset['ro.moz.iccInfo.mbdn'] = voicemail;
+        }
+
+        // Load cell broadcast channels requested as mandatory by the operator.
+        var cellbroadcast = result[0].getAttribute('cellbroadcast');
+        cset['ro.moz.cellbroadcast.searchlist'] = "";
+        if (cellbroadcast) {
+          cset['ro.moz.cellbroadcast.searchlist'] = cellbroadcast;
+          // 0x1100-0x1103,0xA000-0xA3FF
+        }
+
+        var transaction = settings.createLock();
+        transaction.set(cset);
+
+        console.log('cset[\'ro.moz.iccInfo.mbdn\']: ' + cset['ro.moz.iccInfo.mbdn']);
+        console.log('cset[\'ro.moz.cellbroadcast.searchlist\']: ' +
+                    cset['ro.moz.cellbroadcast.searchlist']);
+      }
+    };
+    xhr.send(null);
   };
 
-  function querySettings(document, mcc, mnc, setting) {
-    var query = '//gsm[network-id' +
-        '[@mcc=' + mcc + '][@mnc=' + mnc + ']' +
-        ']/' + setting;
+  function querySettings(document, mcc, mnc) {
+    var query = '//operator' + '[@mcc=' + mcc + '][@mnc=' + mnc + ']';
     var xpe = new XPathEvaluator();
     var nsResolver = xpe.createNSResolver(document);
-    return xpe.evaluate(query, document, nsResolver, 0, null);
-  };
-
-  function storeSettings() {
-    var transaction = settings.createLock();
-    transaction.set(cset);
+    var result = xpe.evaluate(query, document, nsResolver, 0, null);
+    var r, found = [];
+    while (r = result.iterateNext()) {
+      found.push(r);
+    }
+    return found;
   };
 
   function onerrorRequest() {
@@ -102,23 +120,23 @@
   cset = {};
   var transaction = settings.createLock();
 
-  var mcc_request = transaction.get('operatorvariant.mcc');
+  var mcc_request = transaction.get('ro.moz.iccInfo.mcc');
   mcc_request.onsuccess = function() {
     var value = -1;
-    if (mcc_request.result['operatorvariant.mcc']) {
-      value = mcc_request.result['operatorvariant.mcc'];
+    if (mcc_request.result['ro.moz.iccInfo.mcc']) {
+      value = mcc_request.result['ro.moz.iccInfo.mcc'];
     }
-    handleSettingsReady('operatorvariant.mcc', value);
+    handleSettingsReady('ro.moz.iccInfo.mcc', value);
   };
   mcc_request.onerror = onerrorRequest;
 
-  var mnc_request = transaction.get('operatorvariant.mnc');
+  var mnc_request = transaction.get('ro.moz.iccInfo.mnc');
   mnc_request.onsuccess = function() {
     var value = -1;
-    if (mnc_request.result['operatorvariant.mnc']) {
-      value = mnc_request.result['operatorvariant.mnc'];
+    if (mnc_request.result['ro.moz.iccInfo.mnc']) {
+      value = mnc_request.result['ro.moz.iccInfo.mnc'];
     }
-    handleSettingsReady('operatorvariant.mnc', value);
+    handleSettingsReady('ro.moz.iccInfo.mnc', value);
   };
   mnc_request.onerror = onerrorRequest;
 
