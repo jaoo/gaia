@@ -44,6 +44,7 @@ var DataMobile = {
     if (callback)
       callback();
   },
+  // TODO: Remove it since this functions is not actually needed.
   getAPN: function dm_getapn(callback) {
     // TODO Use 'shared' version
     var APN_FILE = '/shared/resources/apn.json';
@@ -55,11 +56,19 @@ var DataMobile = {
     xhr.responseType = 'json';
     xhr.onreadystatechange = function() {
       if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status === 0)) {
+        // TODO: read mcc and mnc codes from 'operatorvariant.{mcc, mnc}'.
         var mcc = navigator.mozMobileConnection.iccInfo.mcc;
         var mnc = navigator.mozMobileConnection.iccInfo.mnc;
         var apnList = xhr.response;
         var apns = apnList[mcc] ? (apnList[mcc][mnc] || []) : [];
-        var selectedAPN = apns[0];
+        // Looks for a valid APN configuration for data calls.
+        var selectedAPN = {};
+        for (var i = 0; i < apns.length; i++) {
+          if (apns[i] && apns[i].type.indexOf('default') != -1) {
+            selectedAPN = apns[i];
+            break;
+          }
+        }
         // Set data in 'Settings'
         var lock = self.settings.createLock();
         lock.set({ 'ril.data.apn': selectedAPN.apn || '' });

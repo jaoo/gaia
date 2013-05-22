@@ -131,6 +131,7 @@
       'ril.sms.strict7BitEncoding.enabled'
     ];
 
+    var newApnSettings = [];
     // store relevant APN settings
     var transaction = settings.createLock();
     for (var type in apnPrefNames) {
@@ -138,6 +139,10 @@
       for (var i = 0; i < result.length; i++) {
         if (result[i] && result[i].type.indexOf(type) != -1) {
           apn = result[i];
+          if (newApnSettings.indexOf(apn) == -1 &&
+              (type !== 'operatorvariant')) {
+            newApnSettings.push(apn);
+          }
           break;
         }
       }
@@ -153,6 +158,8 @@
         transaction.set(item);
       }
     }
+
+    transaction.set({'ril.data.apnSettings': [newApnSettings]});
 
     // store the current mcc/mnc info in the settings
     transaction.set({

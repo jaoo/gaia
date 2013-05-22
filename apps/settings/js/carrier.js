@@ -106,6 +106,7 @@ var Carrier = (function newCarrier(window, document, undefined) {
       input.type = 'radio';
       input.name = usage + 'ApnSettingsCarrier';
       input.dataset.setting = 'ril.' + usage + '.carrier';
+      input.dataset.apnSettings = JSON.stringify(item);
       input.value = item.carrier || item.apn;
       input.onclick = function fillAPNData() {
         rilData(usage, 'apn').value = item.apn || '';
@@ -206,6 +207,52 @@ var Carrier = (function newCarrier(window, document, undefined) {
     // force data connection to restart if changes are validated
     var submitButton = apnPanel.querySelector('button[type=submit]');
     submitButton.addEventListener('click', restartDataConnection);
+    submitButton.addEventListener('click', saveNewApnSettings);
+  }
+
+  // save new APN settings
+  function saveNewApnSettings() {
+    var newApnSettings = [];
+    var usages = ['data', 'mms', 'supl'];
+    var itemListChecked = false;
+    usages.forEach(function(usage) {
+      var apnPanel = document.getElementById('carrier-' + usage + 'Settings');
+      var apnList = apnPanel.querySelector('.apnSettings-list');
+      var radios = apnList.querySelectorAll('input[type="radio"]');
+      for (var i = 0; i < radios.length; i++) {
+        if (radios[i].checked && radios[i].dataset.apnSettings) {
+          if (newApnSettings.indexOf(radios[i].dataset.apnSettings) == -1) {
+            newApnSettings.push(radios[i].dataset.apnSettings);
+          }
+          itemListChecked = true;
+          break;
+        }
+      }
+      // If none of them are checked we save the custom ones.
+      if (!itemListChecked) {
+        var types = [];
+        var customApn = {};
+        customApn.carrier = 'custom';
+        types.push(usage === 'data' ? 'default' : usage);
+        customApn.types = types;
+
+        var keys = ['apn', 'user', 'passwd', 'httpProxyHost', 'httpProxyPort'];
+        if (usage === 'mms') {
+          keys.push('mmsc', 'mmsproxy', 'mmsport');
+        }
+        keys.forEach(function(key) {
+          asyncStorage.getItem(
+            'ril.' + usage + '.custom.' + key, function(value) {
+            customApn[key] = value;
+          });
+        });
+        newApnSettings.push(customApn);
+      }
+      itemListChecked = false;
+    });
+    var settings = Settings.mozSettings;
+    var transaction = settings.createLock();
+    transaction.set({'ril.data.apnSettings': [newApnSettings]});
   }
 
   // restart data connection by toggling it off and on again
