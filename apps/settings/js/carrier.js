@@ -11,18 +11,26 @@ var Carrier = {
 
   // handle carrier settings
   carrierSettings: function cr_carrierSettings() {
-    var APN_FILE = '/shared/resources/apn.json';
-    var _ = window.navigator.mozL10n.get;
-    var restartingDataConnection = false;
+    const APN_FILE = '/shared/resources/apn.json';
+    const APN_TYPES = ['data', 'mms', 'supl'];
+    const TYPE_MAPPING = {'data': 'default',
+                          'mms': 'mms',
+                          'supl': 'supl'};
+    const KEY_MAPPING = {'passwd': 'password',
+                         'httpProxyHost': 'proxy',
+                         'httpProxyPort': 'port'};
     const AUTH_TYPES = ['none', 'pap', 'chap', 'papOrChap'];
 
-    /**
-     * gCompatibleAPN holds all compatible APNs matching the current iccInfo
-     * (mcc,mnc) for every usage filter
-     */
-
+    var _ = window.navigator.mozL10n.get;
+    var restartingDataConnection = false;
     var mobileConnection = getMobileConnection();
-    var gCompatibleAPN = null;
+
+    // allApnSettings is a list of all possible prefered APNs based on the SIM
+    // operator numeric (MCC MNC codes in the ICC card)
+    var allApnList = null;
+    var usePreferred = {'default': false,
+                        'mms': false,
+                        'supl': false};
 
     var mccMncCodes = { mcc: '-1', mnc: '-1' };
 
@@ -47,14 +55,127 @@ var Carrier = {
       };
     }
 
-    // query <apn> elements matching the mcc/mnc arguments
-    function queryAPN(callback, usage) {
-      if (!callback)
-        return;
+    // helper
+    function getPreferredApnName(type) {
+      var preferredApnName = null;
 
-      var usageFilter = usage;
-      if (!usage || usage == 'data') {
-        usageFilter = 'default';
+      var panel = document.getElementById('carrier-' + type + 'Settings');
+      var list = panel.querySelector('.apnSettings-list');
+      var radioButtons = list.querySelectorAll('input[type="radio"]');
+
+      for (var i = 0; i < radioButtons.length; i++) {
+        if (radioButtons[i].checked) {
+          preferredApnName = radioButtons[i].dataset.apn ||
+                             radioButtons[i].value;
+          break;
+        }
+      }
+
+      return preferredApnName;
+    }
+
+    // helper
+    function getPreferredApn(type) {
+      var preferredApnName = getPreferredApnName(type);
+      if (!preferredApnName) {
+        return null;
+      }
+      for (var i = 0; i < allApnList.length; i++) {
+        if (allApnList[i].apn && (allApnList[i].apn === preferredApnName)) {
+          return allApnList[i];
+        }
+      }
+      return null;
+    }
+
+    // helper
+    function canHandleType(apn, type) {
+     var apnType = apn.type || apn.types;
+     return (apnType.type && (apnType.type.indexOf(TYPE_MAPPING[type]) != -1));
+    }
+
+    // build the list of APNs to be used to set up data calls.
+    function buildAndStoreApnSettings() {
+      var apnSettings = [];
+      var validApnFound = false;
+
+      for (var i = 0; i < APN_TYPES.length; i++) {
+        var type = APN_TYPES[i];
+        console.log('Going for ' + type);
+        // user might not select the preferred APN yet
+        if (!usePreferred[TYPE_MAPPING[type]]) {
+          // let's find out in the list an APN being capable of handling this
+          // type
+          validApnFound = false;
+          // a valid APN might be already included, let's search it
+          for (var j = 0; j < apnSettings.length; j++) {
+            if (canHandleType(apnSettings[j], type)) {
+              validApnFound = true;
+              break;
+            }
+          }
+          if (validApnFound) {
+            // already have a valid APN, lets go for the next APN type
+            console.log('Already have APN for ' + type);
+            continue;
+          }
+          // there is no valid APN for the type, use the first APN in the list
+          for (var k = 0; k < allApnList.length; k++) {
+            if (canHandleType(allApnList[k], type)) {
+              apnSettings.push(allApnList[k]);
+              break;
+            }
+          }
+          continue;
+        }
+        // user has already selected an APN, let's include it
+        var preferredApn = getPreferredApn(type);
+        if (preferredApn) {
+          validApnFound = false;
+          // the same APN might be already included
+          for (var l = 0; j < apnSettings.length; l++) {
+            if (apnSettings[l].apn === preferredApn.apn) {
+              validApnFound = true;
+              break;
+            }
+          }
+          if (validApnFound) {
+            // already have this one, continue
+            console.log('Already have APN for ' + type);
+            continue;
+          }
+          // not included yet, let's include it
+          apnSettings.push(preferredApn);
+        }
+      }
+
+      // change property name 'type' by 'types'
+      for (var n = 0; n < apnSettings.length; n++) {
+        var apn = apnSettings[n];
+        if (apn.types) {
+          continue;
+        }
+        apn.types = [];
+        apn.type.forEach(function forEachApnType(type) {
+          apn.types.push(type);
+        });
+        delete apn.type;
+      }
+
+      // store settings into the database
+      Settings.mozSettings.createLock().set({'ril.data.apnSettings':
+                                             [apnSettings]});
+    }
+
+    // query <apn> elements matching the mcc/mnc arguments
+    function queryApn(callback, usage) {
+      if (!callback) {
+        return;
+      }
+
+      var usageFilter = 'default';
+      if (usage) {
+        usageFilter = TYPE_MAPPING[usage];
       }
 
       // filter APNs by usage
@@ -69,8 +190,8 @@ var Carrier = {
       };
 
       // early way out if the query has already been performed
-      if (gCompatibleAPN) {
-        callback(filter(gCompatibleAPN), usage);
+      if (allApnList) {
+        callback(filter(allApnList), usage);
         return;
       }
 
@@ -79,19 +200,19 @@ var Carrier = {
         var mcc = mccMncCodes.mcc;
         var mnc = mccMncCodes.mnc;
         // get a list of matching APNs
-        gCompatibleAPN = apn[mcc] ? (apn[mcc][mnc] || []) : [];
-        callback(filter(gCompatibleAPN), usage);
+        allApnList = apn[mcc] ? (apn[mcc][mnc] || []) : [];
+        callback(filter(allApnList), usage);
       });
     }
 
     // helper
-    function rilData(usage, name) {
+    function getFormField(usage, name) {
       var selector = 'input[data-setting="ril.' + usage + '.' + name + '"]';
       return document.querySelector(selector);
     }
 
     // update APN fields
-    function updateAPNList(apnItems, usage) {
+    function buildApnList(apnItems, usage) {
       var apnPanel = document.getElementById('carrier-' + usage + 'Settings');
       if (!apnPanel) // unsupported APN type
         return;
@@ -100,29 +221,26 @@ var Carrier = {
       var advForm = apnPanel.querySelector('.apnSettings-advanced');
       var lastItem = apnList.querySelector('.apnSettings-custom');
 
-      var kUsageMapping = {'data': 'default',
-                           'mms': 'mms',
-                           'supl': 'supl'};
-      var currentType = kUsageMapping[usage];
-
       // create a button to apply <apn> data to the current fields
-      function createAPNItem(item) {
+      function createApnItem(item) {
         // create an <input type="radio"> element
         var input = document.createElement('input');
         input.type = 'radio';
         input.name = usage + 'ApnSettingsCarrier';
         input.dataset.setting = 'ril.' + usage + '.carrier';
-        input.value = item.carrier || item.apn;
-        input.onclick = function fillAPNData() {
-          rilData(usage, 'apn').value = item.apn || '';
-          rilData(usage, 'user').value = item.user || '';
-          rilData(usage, 'passwd').value = item.password || '';
-          rilData(usage, 'httpProxyHost').value = item.proxy || '';
-          rilData(usage, 'httpProxyPort').value = item.port || '';
+        input.dataset.apn = item.apn;
+        input.value = item.apn;
+        input.onclick = function fillApnFrom() {
+          usePreferred[TYPE_MAPPING[usage]] = true;
+          getFormField(usage, 'apn').value = item.apn || '';
+          getFormField(usage, 'user').value = item.user || '';
+          getFormField(usage, 'passwd').value = item.password || '';
+          getFormField(usage, 'httpProxyHost').value = item.proxy || '';
+          getFormField(usage, 'httpProxyPort').value = item.port || '';
           if (usage == 'mms') {
-            rilData(usage, 'mmsc').value = item.mmsc || '';
-            rilData(usage, 'mmsproxy').value = item.mmsproxy || '';
-            rilData(usage, 'mmsport').value = item.mmsport || '';
+            getFormField(usage, 'mmsc').value = item.mmsc || '';
+            getFormField(usage, 'mmsproxy').value = item.mmsproxy || '';
+            getFormField(usage, 'mmsport').value = item.mmsport || '';
           }
           var input = document.getElementById('ril-' + usage + '-authType');
           input.value = AUTH_TYPES[item.authtype] || 'notDefined';
@@ -158,16 +276,13 @@ var Carrier = {
 
       // fill the APN list
       for (var i = 0; i < apnItems.length; i++) {
-        apnList.insertBefore(createAPNItem(apnItems[i]), lastItem);
+        apnList.insertBefore(createApnItem(apnItems[i]), lastItem);
       }
 
       var settings = Settings.mozSettings;
-      // maps for UI fields(current settings key) to new apn setting keys.
-      var kKeyMappings = {'passwd': 'password',
-                         'httpProxyHost': 'proxy',
-                         'httpProxyPort': 'port'};
+
       // helper
-      function fillCustomAPNSettingFields() {
+      function fillCustomApnSettingFields() {
         var keys = ['apn', 'user', 'passwd', 'httpProxyHost', 'httpProxyPort'];
         if (usage === 'mms') {
           keys.push('mmsc', 'mmsproxy', 'mmsport');
@@ -176,7 +291,7 @@ var Carrier = {
         keys.forEach(function(key) {
           asyncStorage.getItem(
             'ril.' + usage + '.custom.' + key, function(value) {
-              rilData(usage, key).value = value || '';
+              getFormField(usage, key).value = value || '';
           });
         });
 
@@ -196,7 +311,7 @@ var Carrier = {
       }
 
       //helper
-      function storeCustomAPNSettingFields() {
+      function storeCustomApnSettingFields() {
         var keys = ['apn', 'user', 'passwd', 'httpProxyHost', 'httpProxyPort'];
         if (usage === 'mms') {
           keys.push('mmsc', 'mmsproxy', 'mmsport');
@@ -204,114 +319,19 @@ var Carrier = {
 
         keys.forEach(function(key) {
           asyncStorage.setItem('ril.' + usage + '.custom.' + key,
-                               rilData(usage, key).value);
+                               getFormField(usage, key).value);
         });
         var authType = document.getElementById('ril-' + usage + '-authType');
         asyncStorage.setItem('ril.' + usage +
           '.custom.authtype', authType.value);
       }
 
-      function buildNewApnSettingsValue(type, apnsForIccCards) {
-        var apnToBeMerged = {};
-
-        // Load the fields from the form into the apn to be merged.
-        var keys = ['apn', 'user', 'passwd', 'httpProxyHost', 'httpProxyPort'];
-        if (type === 'mms') {
-          keys.push('mmsc', 'mmsproxy', 'mmsport');
-        }
-        keys.forEach(function(key) {
-          apnToBeMerged[(kKeyMappings[key] || key)] = rilData(usage, key).value;
-        });
-        // fill authType field and push it to keys.
-        var authType = document.getElementById('ril-' + usage + '-authType');
-        apnToBeMerged['authtype'] = authType.value;
-        keys.push('authtype');
-
-        var newApnsForIccCards = [];
-        for (var iccCardIndex = 0;
-             iccCardIndex < apnsForIccCards.length;
-             iccCardIndex++) {
-
-          var newApnsForIccCard = [];
-          var apnsForIccCard = apnsForIccCards[iccCardIndex];
-          var equalTypeAPNFound = false;
-          for (var apnIndex = 0; apnIndex < apnsForIccCard.length; apnIndex++) {
-
-            var apn = apnsForIccCard[apnIndex];
-            if (apn.types.indexOf(type) != -1) {
-              // Compare the existing apn to the apn to be merge.
-              var sameApn = true;
-              keys.forEach(function(key) {
-                if (apn[key] !== apnToBeMerged[key]) {
-                  sameApn = false;
-                }
-              });
-              if (sameApn) {
-                newApnsForIccCard.push(apn);
-              } else {
-                // Add the apn to be merged.
-                var newType = [];
-                newType.push(type);
-                apnToBeMerged.types = newType;
-                newApnsForIccCard.push(apnToBeMerged);
-
-                // Delete the type from the existing apn and add that apn if the
-                // APN had other types.
-                apn.types.splice(apn.types.indexOf(type), 1);
-                if (apn.types.length !== 0) {
-                  newApnsForIccCard.push(apn);
-                }
-              }
-              equalTypeAPNFound = true;
-            } else {
-              newApnsForIccCard.push(apn);
-            }
-          }
-          if (!equalTypeAPNFound) {
-            apnToBeMerged.types = [type];
-            newApnsForIccCard.push(apnToBeMerged);
-          }
-          newApnsForIccCards.push(newApnsForIccCard);
-        }
-
-        settings.createLock().set({'ril.data.apnSettings': newApnsForIccCards});
-      }
-
-      // use new call setting architecture
-      function storeNewApnSettings() {
-        if (!currentType) {
-          return;
-        }
-        var reqOld = settings.createLock().get('ril.data.apnSettings');
-        reqOld.addEventListener('success', function handleAPNSettings() {
-          var oldAPNSettings = reqOld.result['ril.data.apnSettings'];
-          buildNewApnSettingsValue(currentType, oldAPNSettings);
-        });
-      }
-
-      if (settings) {
-        var radios = apnList.querySelectorAll('input[type="radio"]');
-        var key = 'ril.' + usage + '.carrier';
-        var request = settings.createLock().get(key);
-        request.onsuccess = function() {
-          var found = false;
-          if (request.result[key] !== undefined) {
-            for (var i = 0; i < radios.length; i++) {
-              radios[i].checked = (request.result[key] === radios[i].value);
-              found = found || radios[i].checked;
-            }
-            // load custom APN settings when the user clicks on the input
-            lastItem.querySelector('input').addEventListener('click',
-              function() {
-                fillCustomAPNSettingFields();
-            });
-            if (!found) {
-              lastItem.querySelector('input').checked = true;
-              fillCustomAPNSettingFields();
-            }
-          }
-        };
-      }
+      // load custom APN settings when the user clicks on the input
+      lastItem.querySelector('input').addEventListener('click',
+        function() {
+          usePreferred[TYPE_MAPPING[usage]] = true;
+          fillCustomApnSettingFields();
+      });
 
       // set current APN to 'custom' on user modification
       // and sanitize addresses
@@ -326,7 +346,7 @@ var Carrier = {
           }
         });
 
-        storeCustomAPNSettingFields();
+        storeCustomApnSettingFields();
       };
 
       /* XXX: This is a minimal and quick fix of bug 882059 for v1-train.
@@ -349,7 +369,7 @@ var Carrier = {
       });
 
       function onSubmit() {
-        storeNewApnSettings();
+        buildAndStoreApnSettings();
         setTimeout(function() {
           if (apnSettingsChanged) {
             apnSettingsChanged = false;
@@ -798,9 +818,9 @@ var Carrier = {
 
       // XXX this should be done later
       getMccMncCodes(function() {
-        queryAPN(updateAPNList, 'data');
-        queryAPN(updateAPNList, 'mms');
-        queryAPN(updateAPNList, 'supl');
+        queryApn(buildApnList, 'data');
+        queryApn(buildApnList, 'mms');
+        queryApn(buildApnList, 'supl');
       });
     });
   },

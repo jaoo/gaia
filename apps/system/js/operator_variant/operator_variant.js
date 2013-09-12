@@ -4,6 +4,7 @@
 'use strict';
 
 (function OperatorVariant() {
+  const APN_TYPES = ['default', 'mms', 'supl'];
   // Reserved Test Network MCC. This is how we know we're running tests vs
   // running in the real world.
   const TEST_NETWORK_MCC = '001';
@@ -40,6 +41,8 @@
   operatorVariantHelper.listen();
 
   function applySettings(mcc, mnc) {
+    mcc = '242';
+    mnc = '01';
 
     // Only apply once per device boot-up, except when in tests. All tests
     // use the reserved Test Network MCC value of '1'. See this handy table
@@ -55,7 +58,7 @@
       apnRequest.onsuccess = function() {
         // no apnSettings, build it.
         if (!apnRequest.result[apnSettingsKey]) {
-          retrieveOperatorVariantSettings(buildApnSettings);
+          retrieveOperatorVariantSettings(buildAndStoreApnSettings);
         }
       };
 
@@ -189,7 +192,7 @@
       }
     }
 
-    buildApnSettings(result);
+    buildAndStoreApnSettings(result);
 
     // store the current mcc/mnc info in the settings
     transaction.set({
@@ -198,39 +201,54 @@
     });
   }
 
-  // build settings for apnSettings.
-  function buildApnSettings(result) {
-    // for new apn settings
-    var apnSettings = [];
-    var apnTypeCandidates = ['default', 'supl', 'mms'];
-    var checkedType = [];
-    var transaction = navigator.mozSettings.createLock();
-    // converts apns to new format
-    for (var i = 0; i < result.length; i++) {
-      var sourceAPNItem = result[i];
-      //copy types
-      var apnTypes = [];
+  // helper
+  function canHandleType(apn, type) {
+   return (apn.type && (apn.type.indexOf(type) != -1));
+  }
 
-      for (var j = 0; j < sourceAPNItem.type.length; j++) {
-        // we only need default, supl, mms, and not duplicate
-        if (apnTypeCandidates.indexOf(sourceAPNItem.type[j]) == -1 ||
-            checkedType.indexOf(sourceAPNItem.type[j]) != -1) {
-          continue;
+  function buildAndStoreApnSettings(allApnList) {
+    var tmpApnSettings = [];
+    var apnSettings = [];
+    var validApnFound = false;
+
+    for (var i = 0; i < APN_TYPES.length; i++) {
+      var type = APN_TYPES[i];
+      // let's find out an APN in the list being capable of handling the type
+      validApnFound = false;
+      // a valid APN might be already included, let's search it
+      for (var j = 0; j < tmpApnSettings.length; j++) {
+        if (canHandleType(tmpApnSettings[j], type)) {
+          validApnFound = true;
+          break;
         }
-        apnTypes[apnTypes.length] = sourceAPNItem.type[j];
-        checkedType[checkedType.length] = sourceAPNItem.type[j];
       }
-      // no valid apnType in this record.
-      if (0 == apnTypes.length) {
+      if (validApnFound) {
+        // already have a valid APN, let's go for the next APN type
         continue;
       }
-      // got types we want, create types field and remove type field.
-      sourceAPNItem['types'] = apnTypes;
-      delete sourceAPNItem['type'];
-      // add apn bags
-      apnSettings.push(sourceAPNItem);
+      // there is no valid APN for the type, use the first APN in the list
+      for (var k = 0; k < allApnList.length; k++) {
+        if (canHandleType(allApnList[k], type)) {
+          tmpApnSettings.push(allApnList[k]);
+          break;
+        }
+      }
     }
-    transaction.set({'ril.data.apnSettings': [apnSettings]});
+
+    // change property mane 'type' by 'types'
+    for (var l = 0; l < tmpApnSettings.length; l++) {
+      var apn = tmpApnSettings[l];
+      apn.types = [];
+      apn.type.forEach(function forEachApnType(type) {
+        apn.types.push(type);
+      });
+      delete apn.type;
+      apnSettings.push(apn);
+    }
+
+    // store settings into the database
+    navigator.mozSettings.createLock().set({'ril.data.apnSettings':
+                                            [apnSettings]});
   }
 
   // check if the wap.UAProf.url is empty, if yes, rebuilt it.
