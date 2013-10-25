@@ -493,6 +493,10 @@ reference-workload-heavy:
 reference-workload-x-heavy:
 	test_media/reference-workload/makeReferenceWorkload.sh x-heavy
 
+# Build the carrier_conf.json file. It contains APNs and other carrier settings.
+.PHONY: carrier-conf
+carrier-conf:
+	@$(call run-js-command, carrier-conf)
 
 # The install-xulrunner target arranges to get xulrunner downloaded and sets up
 # some commands for invoking it. But it is platform dependent
