@@ -81,7 +81,8 @@ var CarrierSettings = (function(window, document, undefined) {
     }
 
     // Show carrier name.
-    cs_showCarrierName();
+    cs_showCarrierName()
+    cs_disabeEnableDataCallCheckbox();
 
     // Init network type selector.
     cs_initNetworkTypeText(cs_initNetworkTypeSelector());
