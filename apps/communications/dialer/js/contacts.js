@@ -76,32 +76,34 @@ var Contacts = {
     request.onsuccess = function findCallback() {
       var contacts = request.result;
       if (contacts.length === 0) {
-        // Checking if FB is enabled or not
-        window.asyncStorage.getItem('tokenData', function(data) {
-          if (!data || !data.access_token) {
-            // Facebook is not even enabled
-            callback(null);
-            return;
-          }
+        LazyLoader.load('/shared/js/async_storage.js', function() {
+          // Checking if FB is enabled or not
+          window.asyncStorage.getItem('tokenData', function(data) {
+            if (!data || !data.access_token) {
+              // Facebook is not even enabled
+              callback(null);
+              return;
+            }
 
-          // It is only necessary to search for one variant as FB takes care
-          fb.getContactByNumber(number, function fb_ready(finalContact) {
-              var objMatching = null;
-              if (finalContact) {
-                objMatching = {
-                  value: number,
-                  // Facebook telephone are always of type personal
-                  type: 'personal',
-                  // We don't know the carrier from FB phones
-                  carrier: null
-                };
-              }
-              callback(finalContact, objMatching);
-            }, function fb_err(err) {
-                callback(null);
+            // It is only necessary to search for one variant as FB takes care
+            fb.getContactByNumber(number, function fb_ready(finalContact) {
+                var objMatching = null;
+                if (finalContact) {
+                  objMatching = {
+                    value: number,
+                    // Facebook telephone are always of type personal
+                    type: 'personal',
+                    // We don't know the carrier from FB phones
+                    carrier: null
+                  };
+                }
+                callback(finalContact, objMatching);
+              }, function fb_err(err) {
+                  callback(null);
+              });
             });
-          });
-        return;
+          return;
+        });
       }
 
       // formatting the matches as an array (contacts) of arrays (phone numbers)
