@@ -42,7 +42,13 @@ var PhoneNumberActionMenu = (function() {
   var _call = function _call() {
     if (_newPhoneNumber) {
       _updateLatestVisit();
-      CallHandler.call(_newPhoneNumber);
+      new MozActivity({
+        name: 'dial',
+        data: {
+          type: 'webtelephony/number',
+          number: _newPhoneNumber
+        }
+      });
     }
     _addContactActionMenu.classList.remove('visible');
   };

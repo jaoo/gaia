@@ -136,8 +136,15 @@ var KeypadManager = {
     if (this.callBarCallAction) {
       if (typeof CallButton !== 'undefined') {
         CallButton.init(this.callBarCallAction,
-                        this.phoneNumber.bind(this),
-                        CallHandler.call);
+                        this.phoneNumber.bind(this), function(number) {
+          new MozActivity({
+            name: 'dial',
+            data: {
+              type: 'webtelephony/number',
+              number: number
+            }
+          });
+        });
       }
       this.callBarCallAction.addEventListener('click',
                                               this.fetchLastCalled.bind(this));

@@ -17,17 +17,15 @@ var CallHandler = (function callHandler() {
     // Workaround here until the bug 787415 is fixed
     // Gecko is sending an activity event in every multiple entry point
     // instead only the one that the href match.
-    if (activity.source.name != 'dial')
+    if (activity.source.name != 'dial') {
       return;
+    }
 
     currentActivity = activity;
 
     var number = activity.source.data.number;
     if (number) {
-      KeypadManager.updatePhoneNumber(number, 'begin', false);
-      if (window.location.hash != '#keyboard-view') {
-        window.location.hash = '#keyboard-view';
-      }
+      call(number);
     }
   }
 
