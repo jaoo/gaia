@@ -451,7 +451,7 @@ var Contacts = (function() {
       if (ActivityHandler.currentlyHandling &&
           ActivityHandler.activityName !== 'open') {
         ActivityHandler.postPickSuccess({ number: number });
-      } else if (MmiManager.isMMI(number)) {
+      } else {
         // For security reasons we cannot directly call MmiManager.send(). We
         // need to show the MMI number in the dialer instead.
         new MozActivity({
@@ -460,10 +460,6 @@ var Contacts = (function() {
             type: 'webtelephony/number',
             number: number
           }
-        });
-      } else if (navigator.mozTelephony) {
-        SimSettingsHelper.getCardIndexFrom('outgoingCall', function(cardIndex) {
-          TelephonyHelper.call(number, cardIndex);
         });
       }
     });
