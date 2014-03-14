@@ -1,0 +1,34 @@
+{
+  "name": "TokFox",
+  "description": "TokFox demo",
+  "launch_path": "/index.html",
+  "orientation": "portrait",
+  "type": "privileged",
+  "role": "system",
+  "default_locale": "en",
+  "icons": {
+    "60": "/icon.png"
+  },
+  "permissions": {
+    "desktop-notification": {},
+    "push": {},
+    "systemXHR": {},
+    "video-capture": {},
+    "audio-capture": {}
+  },
+  "messages": [
+    { "push": "/index.html"},
+    { "push-register": "/index.html"},
+    { "notification": "/index.html" }
+  ],
+  "activities": {
+    "dial": {
+      "filters": {
+        "type": "webtelephony/number",
+        "number": { "pattern":"[\\d\\s+#*().-]{0,50}" }
+      },
+      "href": "/index.html",
+      "disposition": "inline"
+    }
+  }
+}
