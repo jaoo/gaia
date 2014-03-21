@@ -1,10 +1,9 @@
 {
   "name": "TokFox",
   "description": "TokFox demo",
-  "launch_path": "/index.html",
+  "launch_path": "/",
   "orientation": "portrait",
   "type": "privileged",
-  "role": "system",
   "default_locale": "en",
   "icons": {
     "60": "/icon.png"
@@ -21,6 +20,26 @@
     { "push-register": "/index.html"},
     { "notification": "/index.html" }
   ],
+  "entry_points": {
+    "demo": {
+      "launch_path": "/demo.html",
+      "name": "DemoTokFox",
+      "icons": {
+        "60": "/icon.png"
+      },
+      "locales": {
+        "en-US": {
+          "name": "DemoTokFox",
+          "description": "DemoTokFox"
+        }
+      }
+    },
+    "tokfox": {
+      "launch_path": "/index.html",
+      "name": "TokFox",
+      "role": "system"
+    }
+  },
   "activities": {
     "dial": {
       "filters": {

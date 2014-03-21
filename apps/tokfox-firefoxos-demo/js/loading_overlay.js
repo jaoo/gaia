@@ -7,7 +7,6 @@
 
   var LoadingOverlay = {
     show: function (text) {
-      console.log('aaa');
       if (!domOverlay) {
         domOverlay = document.getElementById('loading-overlay');
         overlayMessage = document.getElementById('loading-overlay-message');

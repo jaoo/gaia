@@ -1,18 +1,18 @@
 /**
- * @license  OpenTok JavaScript Library v2.2.3
+ * @license  OpenTok JavaScript Library v2.2.3.1
  * http://www.tokbox.com/
  *
  * Copyright (c) 2013 TokBox, Inc.
  *
- * Date: March 03 10:04:20 2014
+ * Date: March 18 06:20:17 2014
  */
 
 (function(window) {
   if (!window.OT) window.OT = {};
 
   OT.properties = {
-    version: 'v2.2.3',         // The current version (eg. v2.0.4) (This is replaced by gradle)
-    build: '5dd5a69',    // The current build hash (This is replaced by gradle)
+    version: 'v2.2.3.1',         // The current version (eg. v2.0.4) (This is replaced by gradle)
+    build: '6e1e904',    // The current build hash (This is replaced by gradle)
 
     // Whether or not to turn on debug logging by default
     debug: 'false',
@@ -34,7 +34,7 @@
     // If this environment supports SSL
     supportSSL: 'true',
     // The CDN to use if we're using SSL
-    cdnURLSSL: 'https://swww.tokbox.com',
+    cdnURLSSL: 'https://static.opentok.com',
     // The loggging URL to use if we're using SSL
     loggingURLSSL: 'https://hlg.tokbox.com/prod',
     // The anvil API URL to use if we're using SSL
@@ -3524,13 +3524,13 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
       if (!_stream) return this;
 
       if (_domElement) {
-        // if (!navigator.mozGetUserMedia) {
-        //   // The browser would have released this on unload anyway, but
-        //   // we're being a good citizen.
-        //   window.URL.revokeObjectURL(_domElement.src);
-        // } else {
+        if (!navigator.mozGetUserMedia) {
+          // The browser would have released this on unload anyway, but
+          // we're being a good citizen.
+          window.URL.revokeObjectURL(_domElement.src);
+        } else {
           _domElement.mozSrcObject = null;
-        // }
+        }
       }
 
       _stream = null;
@@ -3774,13 +3774,13 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
     }
 
     // The official spec way is 'srcObject', we are slowly converging there.
-    // if (videoElement.srcObject !== void 0) {
-    //   videoElement.srcObject = webRTCStream;
-    // } else if (videoElement.mozSrcObject !== void 0) {
+    if (videoElement.srcObject !== void 0) {
+      videoElement.srcObject = webRTCStream;
+    } else if (videoElement.mozSrcObject !== void 0) {
       videoElement.mozSrcObject = webRTCStream;
-    // } else {
-    //   videoElement.src = window.URL.createObjectURL(webRTCStream);
-    // }
+    } else {
+      videoElement.src = window.URL.createObjectURL(webRTCStream);
+    }
 
     videoElement.play();
   }
@@ -8647,7 +8647,7 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
     // Write out the address.
     for (i = 0; i < this.toAddress.length; i++) {
       /*jshint newcap:false */
-      address.push(TextEncoder('utf-8').encode(this.toAddress[i]));
+      address.push(new TextEncoder('utf-8').encode(this.toAddress[i]));
       cBuf += 2;
       cBuf += address[i].length;
     }
@@ -8659,8 +8659,8 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
     i = 0;
 
     for (var key in this.headers) {
-      headerKey.push(TextEncoder('utf-8').encode(key));
-      headerVal.push(TextEncoder('utf-8').encode(this.headers[key]));
+      headerKey.push(new TextEncoder('utf-8').encode(key));
+      headerVal.push(new TextEncoder('utf-8').encode(this.headers[key]));
       cBuf += 4;
       cBuf += headerKey[i].length;
       cBuf += headerVal[i].length;
@@ -8668,7 +8668,7 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
       i++;
     }
 
-    dataView = TextEncoder('utf-8').encode(this.data);
+    dataView = new TextEncoder('utf-8').encode(this.data);
     cBuf += dataView.length;
 
     // Let's allocate a binary blob of this size
@@ -8756,7 +8756,7 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
       length += uint8View[offset++];
       strView = new Uint8Array(buffer, offset, length);
       /*jshint newcap:false */
-      address[i] = TextDecoder('utf-8').decode(strView);
+      address[i] = new TextDecoder('utf-8').decode(strView);
       offset += length;
     }
 
@@ -8767,19 +8767,19 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
       length = uint8View[offset++] << 8;
       length += uint8View[offset++];
       strView = new Uint8Array(buffer, offset, length);
-      keyStr = TextDecoder('utf-8').decode(strView);
+      keyStr = new TextDecoder('utf-8').decode(strView);
       offset += length;
 
       length = uint8View[offset++] << 8;
       length += uint8View[offset++];
       strView = new Uint8Array(buffer, offset, length);
-      valStr = TextDecoder('utf-8').decode(strView);
+      valStr = new TextDecoder('utf-8').decode(strView);
       headers[keyStr] = valStr;
       offset += length;
     }
 
     var dataView = new Uint8Array(buffer, offset);
-    var data = TextDecoder('utf-8').decode(dataView);
+    var data = new TextDecoder('utf-8').decode(dataView);
 
     return new OT.Rumor.Message(type, address, headers, data);
   };
@@ -12536,16 +12536,16 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
    * @memberOf Publisher
    */
 
-	/**
-	 * Returns an object that has the properties that define the current user interface controls of 
+  /**
+   * Returns an object that has the properties that define the current user interface controls of 
    * the Subscriber. You can modify the properties of this object and pass the object to the 
    * <code>setStyle()</code> method of the Subscriber object. (See the documentation for 
    * <a href="#setStyle">setStyle()</a> to see the styles that define this object.)
-	 * @return {Object} The object that defines the styles of the Subscriber.
-	 * @see <a href="#setStyle">setStyle()</a>
-	 * @method #getStyle
-	 * @memberOf Subscriber
-	 */
+   * @return {Object} The object that defines the styles of the Subscriber.
+   * @see <a href="#setStyle">setStyle()</a>
+   * @method #getStyle
+   * @memberOf Subscriber
+   */
     // If +key+ is falsly then all styles will be returned.
     self.getStyle = function(key) {
       return _style.get(key);
@@ -14066,73 +14066,73 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
     _state = new OT.PublishingState(stateChangeFailed);
 
 
-	/**
-	* Dispatched when the user has clicked the Allow button, granting the
-	* app access to the camera and microphone. The Publisher object has an
-	* <code>accessAllowed</code> property which indicates whether the user
-	* has granted access to the camera and microphone.
-	* @see Event
-	* @name accessAllowed
-	* @event
-	* @memberof Publisher
-	*/
+  /**
+  * Dispatched when the user has clicked the Allow button, granting the
+  * app access to the camera and microphone. The Publisher object has an
+  * <code>accessAllowed</code> property which indicates whether the user
+  * has granted access to the camera and microphone.
+  * @see Event
+  * @name accessAllowed
+  * @event
+  * @memberof Publisher
+  */
 
-	/**
-	* Dispatched when the user has clicked the Deny button, preventing the
-	* app from having access to the camera and microphone.
-	* @see Event
-	* @name accessDenied
-	* @event
-	* @memberof Publisher
-	*/
+  /**
+  * Dispatched when the user has clicked the Deny button, preventing the
+  * app from having access to the camera and microphone.
+  * @see Event
+  * @name accessDenied
+  * @event
+  * @memberof Publisher
+  */
 
-	/**
-	* Dispatched when the Allow/Deny dialog box is opened. (This is the dialog box in which
-	* the user can grant the app access to the camera and microphone.)
-	* @see Event
-	* @name accessDialogOpened
-	* @event
-	* @memberof Publisher
-	*/
+  /**
+  * Dispatched when the Allow/Deny dialog box is opened. (This is the dialog box in which
+  * the user can grant the app access to the camera and microphone.)
+  * @see Event
+  * @name accessDialogOpened
+  * @event
+  * @memberof Publisher
+  */
 
-	/**
-	* Dispatched when the Allow/Deny box is closed. (This is the dialog box in which the
-	* user can grant the app access to the camera and microphone.)
-	* @see Event
-	* @name accessDialogClosed
-	* @event
-	* @memberof Publisher
-	*/
+  /**
+  * Dispatched when the Allow/Deny box is closed. (This is the dialog box in which the
+  * user can grant the app access to the camera and microphone.)
+  * @see Event
+  * @name accessDialogClosed
+  * @event
+  * @memberof Publisher
+  */
 
-	/**
-	 * The publisher has started streaming to the session.
-	 * @name streamCreated
-	 * @event
-	 * @memberof Publisher
-	 * @see StreamEvent
-	 * @see <a href="Session.html#publish">Session.publish()</a>
-	 */
+  /**
+   * The publisher has started streaming to the session.
+   * @name streamCreated
+   * @event
+   * @memberof Publisher
+   * @see StreamEvent
+   * @see <a href="Session.html#publish">Session.publish()</a>
+   */
 
-	/**
-	 * The publisher has stopped streaming to the session. The default behavior is that
-	 * the Publisher object is removed from the HTML DOM). The Publisher object dispatches a 
-	 * <code>destroyed</code> event when the element is removed from the HTML DOM. If you call the 
-	 * <code>preventDefault()</code> method in the event listener for the 
-	 * <code>streamDestroyed</code> event, the default behavior is prevented, and you 
-	 * can, optionally, retain the Publisher for reuse or clean it up using your own code.
-	 * @name streamDestroyed
-	 * @event
-	 * @memberof Publisher
-	 * @see StreamEvent
-	 */
+  /**
+   * The publisher has stopped streaming to the session. The default behavior is that
+   * the Publisher object is removed from the HTML DOM). The Publisher object dispatches a 
+   * <code>destroyed</code> event when the element is removed from the HTML DOM. If you call the 
+   * <code>preventDefault()</code> method in the event listener for the 
+   * <code>streamDestroyed</code> event, the default behavior is prevented, and you 
+   * can, optionally, retain the Publisher for reuse or clean it up using your own code.
+   * @name streamDestroyed
+   * @event
+   * @memberof Publisher
+   * @see StreamEvent
+   */
 
-	/**
-	* Dispatched when the Publisher element is removed from the HTML DOM. When this event
+  /**
+  * Dispatched when the Publisher element is removed from the HTML DOM. When this event
   * is dispatched, you may choose to adjust or remove HTML DOM elements related to the publisher.
-	* @name destroyed
-	* @event
-	* @memberof Publisher
-	*/
+  * @name destroyed
+  * @event
+  * @memberof Publisher
+  */
   };
 
   // Helper function to generate unique publisher ids
@@ -15006,26 +15006,26 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
 
     _state = new OT.SubscribingState(stateChangeFailed);
 
-	/**
-	* Dispatched when the OpenTok media server stops sending video to the subscriber.
-	* This feature of the OpenTok media server has a subscriber drop the video stream
-	* when connectivity degrades. The subscriber continues to receive the audio stream,
-	* if there is one. This feature is only available in sessions that use the OpenTok
-	* media server, not in peer-to-peer sessions.
-	* @see Event
-	* @name videoDisabled
-	* @event
-	* @memberof Subscriber
-	*/
+  /**
+  * Dispatched when the OpenTok media server stops sending video to the subscriber.
+  * This feature of the OpenTok media server has a subscriber drop the video stream
+  * when connectivity degrades. The subscriber continues to receive the audio stream,
+  * if there is one. This feature is only available in sessions that use the OpenTok
+  * media server, not in peer-to-peer sessions.
+  * @see Event
+  * @name videoDisabled
+  * @event
+  * @memberof Subscriber
+  */
 
-	/**
-	* Dispatched when the Subscriber element is removed from the HTML DOM. When this event is
-	* dispatched, you may choose to adjust or remove HTML DOM elements related to the subscriber.
-	* @see Event
-	* @name destroyed
-	* @event
-	* @memberof Subscriber
-	*/
+  /**
+  * Dispatched when the Subscriber element is removed from the HTML DOM. When this event is
+  * dispatched, you may choose to adjust or remove HTML DOM elements related to the subscriber.
+  * @see Event
+  * @name destroyed
+  * @event
+  * @memberof Subscriber
+  */
   };
 
 })(window);
@@ -15178,7 +15178,9 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
     // There was an error, but we couldn't find the error info.
     return {
       code: null,
-      message: 'Unknown error: getSessionInfo XML response was badly formed'
+      message: 'Unknown error: getSessionInfo XML response was badly formed ' +
+        (xmlDocument && xmlDocument.documentElement &&
+        xmlDocument.documentElement.innerHTML.substring(0, 1000))
     };
   };
 
@@ -15269,41 +15271,41 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
 
 })(window);
 !(function() {
-	/**
-	 * A class defining properties of the <code>capabilities</code> property of a
+  /**
+   * A class defining properties of the <code>capabilities</code> property of a
    * Session object. See <a href="Session.html#properties">Session.capabilities</a>.
-	 * <p>
-	 * All Capabilities properties are undefined until you have connected to a session
-	 * and the Session object has dispatched the <code>sessionConnected</code> event.
-	 * <p>
-	 * For more information on token roles, see the
+   * <p>
+   * All Capabilities properties are undefined until you have connected to a session
+   * and the Session object has dispatched the <code>sessionConnected</code> event.
+   * <p>
+   * For more information on token roles, see the
    * <a href="server_side_libraries.html#generate_token">generate_token()</a>
    * method of the OpenTok server-side libraries.
-	 *
-	 * @class Capabilities
-	 *
-	 * @property {Number} forceDisconnect Specifies whether you can call
+   *
+   * @class Capabilities
+   *
+   * @property {Number} forceDisconnect Specifies whether you can call
    * the <code>Session.forceDisconnect()</code> method (1) or not (0). To call the
    * <code>Session.forceDisconnect()</code> method,
    * the user must have a token that is assigned the role of moderator.
-	 * @property {Number} forceUnpublish Specifies whether you can call
+   * @property {Number} forceUnpublish Specifies whether you can call
    * the <code>Session.forceUnpublish()</code> method (1) or not (0). To call the
    * <code>Session.forceUnpublish()</code> method, the user must have a token that
    * is assigned the role of moderator.
-	 * @property {Number} publish Specifies whether you can publish to the session (1) or not (0).
+   * @property {Number} publish Specifies whether you can publish to the session (1) or not (0).
    * The ability to publish is based on a few factors. To publish, the user must have a token that
    * is assigned a role that supports publishing. There must be a connected camera and microphone.
-	 * @property {Number} subscribe Specifies whether you can subscribe to streams
+   * @property {Number} subscribe Specifies whether you can subscribe to streams
    * in the session (1) or not (0). Currently, this capability is available for all users on all
    * platforms.
    * @property {Number} supportsWebRTC Whether the client supports WebRTC (1) or not (0).
-	 */
-	OT.Capabilities = function(permissions) {
-	    this.publish = permissions.indexOf('publish') !== -1 ? 1 : 0;
-	    this.subscribe = permissions.indexOf('subscribe') !== -1 ? 1 : 0;
-	    this.forceUnpublish = permissions.indexOf('forceunpublish') !== -1 ? 1 : 0;
-	    this.forceDisconnect = permissions.indexOf('forcedisconnect') !== -1 ? 1 : 0;
-	    this.supportsWebRTC = OT.$.supportsWebRTC() ? 1 : 0;
+   */
+  OT.Capabilities = function(permissions) {
+      this.publish = permissions.indexOf('publish') !== -1 ? 1 : 0;
+      this.subscribe = permissions.indexOf('subscribe') !== -1 ? 1 : 0;
+      this.forceUnpublish = permissions.indexOf('forceunpublish') !== -1 ? 1 : 0;
+      this.forceDisconnect = permissions.indexOf('forcedisconnect') !== -1 ? 1 : 0;
+      this.supportsWebRTC = OT.$.supportsWebRTC() ? 1 : 0;
 
       this.permittedTo = function(action) {
         return this.hasOwnProperty(action) && this[action] === 1;
@@ -15582,14 +15584,13 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
         socketUrl, navigator.userAgent, OT.properties.version,
         window.externalHost ? 'yes' : 'no'
       ];
-      this.logEvent( 'Connect', 'Attempt',
-        'webSocketServerUrl|userAgent|sdkVersion|chromeFrame',
-        analyticsPayload.map(function(e) { return e.replace('|', '\\|'); }).join('|')
-      );
 
       _socket.connect(_token, this.sessionInfo, function(error, sessionState) {
         if (error) {
-          this.logEvent('Connect', 'Failure', 'reason', error.message);
+          analyticsPayload.splice(0,0,error.message);
+          this.logEvent('Connect', 'Failure',
+            'reason|webSocketServerUrl|userAgent|sdkVersion|chromeFrame',
+            analyticsPayload.map(function(e) { return e.replace('|', '\\|'); }).join('|'));
 
           sessionConnectFailed.call(this, error.message, error.code);
           return;
@@ -15856,6 +15857,15 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
       if (OT.APIKEY.length === 0) {
         OT.APIKEY = _apiKey;
       }
+      
+      var analyticsPayload = [
+        navigator.userAgent, OT.properties.version,
+        window.externalHost ? 'yes' : 'no'
+      ];
+      this.logEvent( 'Connect', 'Attempt',
+        'userAgent|sdkVersion|chromeFrame',
+        analyticsPayload.map(function(e) { return e.replace('|', '\\|'); }).join('|')
+      );
 
       getSessionInfo.call(this);
       return this;
@@ -17022,43 +17032,43 @@ var bindToSuccessAndErrorCallbacks = function(request, success, error) {
    * @see <a href="Session.html#publish">Session.publish()</a>
    */
 
-	/**
-	 * A stream from another client has stopped publishing to the session.
-	 * <p>
-	 * The default behavior is that all Subscriber objects that are subscribed to the stream are
-	 * unsubscribed and removed from the HTML DOM. Each Subscriber object dispatches a
-	 * <code>destroyed</code> event when the element is removed from the HTML DOM. If you call the
-	 * <code>preventDefault()</code> method in the event listener for the 
-	 * <code>streamDestroyed</code> event, the default behavior is prevented and you can clean up
-	 * Subscriber objects using your own code. See
-	 * <a href="Session.html#getSubscribersForStream">Session.getSubscribersForStream()</a>.
-	 * <p>
-	 * For streams published by your own client, the Publisher object dispatches a
-	 * <code>streamDestroyed</code> event.
-	 * <p>
-	 * For a code example and more details, see {@link StreamEvent}.
-	 * @name streamDestroyed
-	 * @event
-	 * @memberof Session
-	 * @see StreamEvent
-	 */
+  /**
+   * A stream from another client has stopped publishing to the session.
+   * <p>
+   * The default behavior is that all Subscriber objects that are subscribed to the stream are
+   * unsubscribed and removed from the HTML DOM. Each Subscriber object dispatches a
+   * <code>destroyed</code> event when the element is removed from the HTML DOM. If you call the
+   * <code>preventDefault()</code> method in the event listener for the 
+   * <code>streamDestroyed</code> event, the default behavior is prevented and you can clean up
+   * Subscriber objects using your own code. See
+   * <a href="Session.html#getSubscribersForStream">Session.getSubscribersForStream()</a>.
+   * <p>
+   * For streams published by your own client, the Publisher object dispatches a
+   * <code>streamDestroyed</code> event.
+   * <p>
+   * For a code example and more details, see {@link StreamEvent}.
+   * @name streamDestroyed
+   * @event
+   * @memberof Session
+   * @see StreamEvent
+   */
 
-	/**
-	 * A stream has started or stopped publishing audio or video (see
-	 * <a href="Publisher.html#publishAudio">Publisher.publishAudio()</a> and
-	 * <a href="Publisher.html#publishVideo">Publisher.publishVideo()</a>); or the 
-	 * <code>videoDimensions</code> property of the Stream
-	 * object has changed (see <a href="Stream.html#"videoDimensions>Stream.videoDimensions</a>).
-	 * @name streamPropertyChanged
-	 * @event
-	 * @memberof Session
-	 * @see StreamPropertyChangedEvent
-	 * @see <a href="Publisher.html#publishAudio">Publisher.publishAudio()</a>
-	 * @see <a href="Publisher.html#publishVideo">Publisher.publishVideo()</a>
-	 * @see <a href="Stream.html#"hasAudio>Stream.hasAudio</a>
-	 * @see <a href="Stream.html#"hasVideo>Stream.hasVideo</a>
-	 * @see <a href="Stream.html#"videoDimensions>Stream.videoDimensions</a>
-	 */
+  /**
+   * A stream has started or stopped publishing audio or video (see
+   * <a href="Publisher.html#publishAudio">Publisher.publishAudio()</a> and
+   * <a href="Publisher.html#publishVideo">Publisher.publishVideo()</a>); or the 
+   * <code>videoDimensions</code> property of the Stream
+   * object has changed (see <a href="Stream.html#"videoDimensions>Stream.videoDimensions</a>).
+   * @name streamPropertyChanged
+   * @event
+   * @memberof Session
+   * @see StreamPropertyChangedEvent
+   * @see <a href="Publisher.html#publishAudio">Publisher.publishAudio()</a>
+   * @see <a href="Publisher.html#publishVideo">Publisher.publishVideo()</a>
+   * @see <a href="Stream.html#"hasAudio>Stream.hasAudio</a>
+   * @see <a href="Stream.html#"hasVideo>Stream.hasVideo</a>
+   * @see <a href="Stream.html#"videoDimensions>Stream.videoDimensions</a>
+   */
 
   };
 

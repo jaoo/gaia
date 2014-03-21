@@ -117,7 +117,7 @@ body[data-layout="register"].keyboard #register-panel {
  */
 
 #call-panel {
-  background: #25A4E8;
+  z-index: 1000;
 }
 
 #call-panel-info {
@@ -168,16 +168,6 @@ body[data-layout="register"].keyboard #register-panel {
   white-space: nowrap;
   color: white;
 }
-
-/*#call-answer {
-  display: none;
-}
-
-body[data-layout="incoming"] #call-answer {
-  display: block;
-  height: 4rem;
-}
-*/
 
 body[data-layout="incoming"] #call-hangup,
 body[data-layout="incoming"] #call-answer{
@@ -260,6 +250,11 @@ body[data-layout="outgoing"] #call-answer{
   display: none !important;
 }
 
+.OT_mirrored:last-child {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+}
 
 /*
  * loading-overlay

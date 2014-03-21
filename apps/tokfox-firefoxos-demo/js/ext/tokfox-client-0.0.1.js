@@ -7,7 +7,7 @@ var TokFoxClient = (function TokFoxClient() {
   /**
    * Default root URL for TokFox API.
    */
-  var DEFAULT_ROOT_URL = 'http://tokfox.herokuapp.com';
+  var DEFAULT_ROOT_URL = 'http://tokfox-staging.herokuapp.com';
 
   /** Debug flag. */
   var debug = false;
@@ -15,116 +15,178 @@ var TokFoxClient = (function TokFoxClient() {
   /** URL for TokFox API. */
   var rootUrl = DEFAULT_ROOT_URL;
 
-  /**
-   *
-   */
-  function createAccount(aliasType, aliasValue, pushEndpoint, callback) {
-    var options = {};
-
-    options.uri = rootUrl + '/account/';
-    options.method = 'POST';
-    options.body = {};
-    options.body.alias = {};
-    options.body.alias.type = aliasType;
-    options.body.alias.value = aliasValue;
-    options.body.pushEndpoint = pushEndpoint;
-
-    request(options, function onRequestPerformed(error, result) {
-      if (callback && (typeof callback === 'function')) {
-        callback(error, result);
-      }
-    });
+  function Alias(type, value) {
+    this.type = type;
+    this.value = value;
   }
 
-  /**
-   *
-   */
-  function getAccounts(callback) {
-    var options = {};
+  Alias.prototype.constructor = Alias;
 
-    options.uri = rootUrl + '/account/';
-    options.method = 'GET';
-    options.body = {};
+  Alias.prototype.toString = function() {
+    return this.type + '/' + this.value;
+  };
 
-    request(options, function onRequestPerformed(error, result) {
-      if (callback && (typeof callback === 'function')) {
-        callback(error, result);
+  function PushEndpoint(invitation, rejection, description) {
+    this.invitation = invitation;
+    this.rejection = rejection;
+    this.description = description;
+  }
+
+  PushEndpoint.prototype.constructor = PushEndpoint;
+
+  function createAccount(alias, pushEndpoint, callback) {
+    var error;
+
+    if (!alias || !(alias instanceof Alias)) {
+      error = {};
+      error.message = 'Invalid alias';
+    }
+
+    if (!error &&
+        (!pushEndpoint || !(pushEndpoint instanceof PushEndpoint))) {
+      error = {};
+      error.message = 'Invalid PUSH endpoint';
+    }
+
+    if (error && callback && (typeof callback === 'function')) {
+      callback(error, null);
+      return;
+    }
+
+    request({
+      method: 'POST',
+      uri: rootUrl + '/account/',
+      body: {
+        alias: alias,
+        pushEndpoint: pushEndpoint
       }
-    });
+    }, callback);
+  }
+
+  function updateAccount(alias, newAlias, newPushEndpoint, callback) {
+    var error;
+
+    if (!alias || !(alias instanceof Alias)) {
+      error = {};
+      error.message = 'Invalid alias';
+    }
+
+    // The user might not want to add a new alias.
+    if (!error &&
+        newAlias && !(newAlias instanceof Alias)) {
+      error = {};
+      error.message = 'New alias is invalid';
+    }
+
+    // The user might not want to update the existing PUSH endpoint.
+    if (!error &&
+        newPushEndpoint && !(newPushEndpoint instanceof PushEndpoint)) {
+      error = {};
+      error.message = 'Invalid PUSH endpoint';
+    }
+
+    if (error && callback && (typeof callback === 'function')) {
+      callback(error, null);
+      return;
+    }
+
+    var body = {};
+    if (newAlias) {
+      body.alias = newAlias;
+    }
+    if (newPushEndpoint) {
+      body.pushEndpoint = newPushEndpoint;
+    }
+
+    request({
+      method: 'PUT',
+      uri: rootUrl + '/account/' + alias.toString(),
+      body: body
+    }, callback);
   }
 
   function accountExist(alias, callback) {
-    var options = {};
+    var error;
 
-    options.uri = rootUrl + '/account/' + alias.type + '/' + alias.value;
-    options.method = 'GET';
+    if (!alias || !(alias instanceof Alias)) {
+      error = {};
+      error.message = 'Invalid alias';
+    }
 
-    request(options, function onDone(error, result) {
-      if (callback && (typeof callback === 'function')) {
-        callback(error, result);
-      }
-    });
+    if (error && callback && (typeof callback === 'function')) {
+      callback(error, null);
+      return;
+    }
+
+    request({
+      method: 'GET',
+      uri: rootUrl + '/account/' + alias.toString()
+    }, callback);
   }
 
-  /**
-   *
-   */
-  function createSession(role, sesssioId, callback) {
-    var options = {};
-
-    options.uri = rootUrl + '/session/';
-    options.method = 'POST';
-    options.body = {};
+  function createSession(role, sessionId, callback) {
+    var body = {};
     if (role) {
-      options.body.role = role;
+      body.role = role;
     }
-    if (sesssioId) {
-      options.body.sesssioId = sesssioId;
+    if (sessionId) {
+      body.sessionId = sessionId;
     }
 
-    request(options, function onRequestPerformed(error, result) {
-      if (callback && (typeof callback === 'function')) {
-        callback(error, result);
-      }
-    });
+    request({
+      method: 'POST',
+      uri: rootUrl + '/session/',
+      body: body
+    }, callback);
   }
 
-  /**
-   *
-   */
-  function invite(aliasType, aliasValue, sessionId, callback) {
-    var options = {};
+  function invite(alias, callerAlias, sessionId, callback) {
+    var error;
 
-    options.uri = rootUrl + '/session/invitation/';
-    options.method = 'POST';
-    options.body = {};
-    options.body.alias = {};
-    options.body.alias.type = aliasType;
-    options.body.alias.value = aliasValue;
-    options.body.sessionId = sessionId;
+    if (!alias || !(alias instanceof Alias) ||
+        (callerAlias && !(callerAlias instanceof Alias))) {
+      error = {};
+      error.message = 'Invalid alias';
+    }
 
-    request(options, function onRequestPerformed(error, result) {
-      if (callback && (typeof callback === 'function')) {
-        callback(error, result);
+    if (error && callback && (typeof callback === 'function')) {
+      callback(error, null);
+      return;
+    }
+
+    request({
+      method: 'POST',
+      uri: rootUrl + '/session/invitation/',
+      body: {
+        alias: alias,
+        callerAlias: callerAlias,
+        sessionId: sessionId
       }
-    });
+    }, callback);
   }
 
-  /**
-   *
-   */
+  function getInvitation(invitationId, callback) {
+    request({
+      uri: rootUrl + '/session/invitation/' + invitationId,
+      method: 'GET'
+    }, callback);
+  }
+
   function acceptInvitation(invitationId, callback) {
-    var options = {};
+    request({
+      method: 'PUT',
+      uri: rootUrl + '/session/invitation/' + invitationId
+    }, callback);
+  }
 
+  function rejectInvitation(invitationId, callback) {
     options.uri = rootUrl + '/session/invitation/' + invitationId;
-    options.method = 'GET';
-    options.body = {};
+    options.method = 'DELETE';
 
-    request(options, function onRequestPerformed(error, result) {
-      if (callback && (typeof callback === 'function')) {
-        callback(error, result);
-      }
-    });
+    request({
+      method: 'DELETE',
+      uri: rootUrl + '/session/invitation/' + invitationId
+    }, callback);
   }
 
   var _timeoutError = {
@@ -134,9 +196,6 @@ var TokFoxClient = (function TokFoxClient() {
     "info": "https://docs.endpoint/errors/1234" // link to more info on the error
   };
 
-  /**
-   *
-   */
   function request(options, callback) {
     if (debug) {
       dump('options is ' + JSON.stringify(options));
@@ -151,33 +210,39 @@ var TokFoxClient = (function TokFoxClient() {
       if (req.status !== 200) {
         // Response in error case. The error object is defined
         // in the API.
-        callback(req.response);
+        if (callback && (typeof callback === 'function')) {
+          callback(req.response);
+        }
         return;
       }
       // If the code is 200, we need to retrieve the response
-      if (typeof callback === 'function') {
+      if (callback && (typeof callback === 'function')) {
         var result = !req.response ? 'OK' : req.response;
         callback(null, result);
       }
     };
 
     req.onerror = function (event) {
-      console.log('ERROR ' + event.target.status);
-      callback(event.target.status, null);
+      if (typeof callback === 'function') {
+        callback(event.target.status, null);
+      }
     };
 
     req.ontimeout = function () {
-      callback(_timeoutError);
+      if (typeof callback === 'function') {
+        callback(_timeoutError);
+      }
     };
 
     // Send the request
-    req.setRequestHeader('Content-Type', 'application/json');
-    req.send(JSON.stringify(options.body));
+    if (options.body) {
+      req.setRequestHeader('Content-Type', 'application/json');
+      req.send(JSON.stringify(options.body));
+    } else {
+      req.send();
+    }
   }
 
-  /**
-   *
-   */
   function dump(msg) {
     if (debug) {
       console.log(msg);
@@ -186,13 +251,17 @@ var TokFoxClient = (function TokFoxClient() {
 
   // Pulic API
   return {
+   'Alias': Alias,
+   'PushEndpoint': PushEndpoint,
    'debug': debug,
    'rootUrl': rootUrl,
    'createSession': createSession,
    'invite': invite,
+   'getInvitation': getInvitation,
    'acceptInvitation': acceptInvitation,
+   'rejectInvitation': rejectInvitation,
    'createAccount': createAccount,
-   'getAccounts': getAccounts,
+   'updateAccount': updateAccount,
    'accountExist': accountExist
   };
 })();
