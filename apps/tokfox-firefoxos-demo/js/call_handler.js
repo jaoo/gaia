@@ -14,14 +14,13 @@
     if (typeof callback !== 'function') {
       callback = function() {};
     }
-    debug && console.log('DEBUG CallHandler: Session connected');
-    debug && console.log('DEBUG CallHandler: Currently we have ' + event.streams);
+    debug && TB.log('Session connected');
     session.publish(publisher, null, function(error) {
       if (error) {
-        debug && console.log('DEBUG CallHandler: Own stream NOT published');
+        debug && TB.log('Own stream not published.');
         callback('Error while publishing');
       } else {
-        debug && console.log('DEBUG CallHandler: Own stream published!!!');
+        debug && TB.log('Own stream published.');
         callback();
       }
     });
@@ -31,19 +30,9 @@
     if (typeof callback !== 'function') {
       callback = function() {};
     }
-    debug && console.log('DEBUG CallHandler: Stream created/connected ' + event.streams.length);
-    _subscribeToStreams(event.streams);
+    debug && TB.log('Stream created event received.');
+    session.subscribe(event.stream);
     callback();
-  }
-
-  function _subscribeToStreams(streams) {
-    for (var i = 0; i < streams.length; i++) {
-      var stream = streams[i];
-      if (stream.connection.connectionId
-           != session.connection.connectionId) {
-        session.subscribe(stream);
-      }
-    }
   }
 
   function _streamDestroyedHandler(event, callback) {
@@ -80,35 +69,36 @@
      * @param onStream String New stream registered in the session
      */
     join: function ch_join(apiKey, sessionID, token, target, onConnected, onStream) {
-      publisher = TB.initPublisher(apiKey, target, publisherOptions);
-      session   = TB.initSession(sessionID);
-      session.connect(apiKey, token);
+      publisher = TB.initPublisher(target, publisherOptions);
+      session   = TB.initSession(apiKey, sessionID);
+      session.connect(token);
 
-      session.addEventListener(
+      session.on(
         'sessionConnected',
         function onConnectedHandler(event) {
           _sessionConnectedHandler(event, onConnected);
         }
       );
 
-      session.addEventListener(
+      session.on(
         'streamCreated',
         function onStreamHandler(event) {
           _streamCreatedHandler(event, onStream);
         }
       );
 
-      session.addEventListener(
+      session.on(
         'streamDestroyed',
         function onStreamDestroyedHandler(event) {
           _streamDestroyedHandler(event, null);
         }
       );
 
-      session.addEventListener(
+      session.on(
         'connectionDestroyed',
         function onConnectionDestroyedHandler(event) {
-          console.log('Connection destroyed');
+          TB.log('Connection destroyed');
+          window.close();
         }
       );
     },
